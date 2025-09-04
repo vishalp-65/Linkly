@@ -1,0 +1,189 @@
+services:
+  # PostgreSQL Database
+  postgres:
+    image: postgres:15-alpine
+    container_name: url-shortener-postgres
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: url_shortener
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: password
+      POSTGRES_INITDB_ARGS: "--encoding=UTF-8 --lc-collate=C --lc-ctype=C"
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+      - ./docker/postgres/init:/docker-entrypoint-initdb.d
+    networks:
+      - url-shortener-network
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres -d url_shortener"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  # Redis Cache
+  redis:
+    image: redis:7-alpine
+    container_name: url-shortener-redis
+    restart: unless-stopped
+    command: redis-server --appendonly yes --requirepass ""
+    ports:
+      - "6379:6379"
+    volumes:
+      - redis_data:/data
+      - ./docker/redis/redis.conf:/usr/local/etc/redis/redis.conf
+    networks:
+      - url-shortener-network
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  # URL Shortener API (Development)
+  api-dev:
+    build:
+      context: .
+      target: development
+    container_name: url-shortener-api-dev
+    restart: unless-stopped
+    environment:
+      NODE_ENV: development
+      PORT: 3000
+      HOST: 0.0.0.0
+      DB_HOST: postgres
+      DB_PORT: 5432
+      DB_NAME: url_shortener
+      DB_USER: postgres
+      DB_PASSWORD: password
+      REDIS_HOST: redis
+      REDIS_PORT: 6379
+      JWT_SECRET: dev-jwt-secret-key-change-this-in-production-32-chars
+      API_KEY_SECRET: dev-api-key-secret-change-this-in-production-32-chars
+      LOG_LEVEL: debug
+    ports:
+      - "3000:3000"
+    volumes:
+      - .:/app
+      - /app/node_modules
+      - ./logs:/app/logs
+    networks:
+      - url-shortener-network
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    profiles:
+      - dev
+
+  # URL Shortener API (Production)
+  api:
+    build:
+      context: .
+      target: production
+    container_name: url-shortener-api
+    restart: unless-stopped
+    environment:
+      NODE_ENV: production
+      PORT: 3000
+      HOST: 0.0.0.0
+      DB_HOST: postgres
+      DB_PORT: 5432
+      DB_NAME: url_shortener
+      DB_USER: postgres
+      DB_PASSWORD: password
+      REDIS_HOST: redis
+      REDIS_PORT: 6379
+      JWT_SECRET: prod-jwt-secret-key-change-this-in-production-32-chars
+      API_KEY_SECRET: prod-api-key-secret-change-this-in-production-32-chars
+      LOG_LEVEL: info
+    ports:
+      - "3000:3000"
+    volumes:
+      - ./logs:/app/logs
+    networks:
+      - url-shortener-network
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    profiles:
+      - prod
+
+  # Redis Cluster (for testing cluster functionality)
+  redis-cluster:
+    image: redis:7-alpine
+    container_name: url-shortener-redis-cluster
+    restart: unless-stopped
+    command: >
+      sh -c "
+        redis-server --port 7000 --cluster-enabled yes --cluster-config-file nodes-7000.conf --cluster-node-timeout 5000 --appendonly yes --daemonize yes &&
+        redis-server --port 7001 --cluster-enabled yes --cluster-config-file nodes-7001.conf --cluster-node-timeout 5000 --appendonly yes --daemonize yes &&
+        redis-server --port 7002 --cluster-enabled yes --cluster-config-file nodes-7002.conf --cluster-node-timeout 5000 --appendonly yes --daemonize yes &&
+        sleep 5 &&
+        redis-cli --cluster create 127.0.0.1:7000 127.0.0.1:7001 127.0.0.1:7002 --cluster-replicas 0 --cluster-yes &&
+        tail -f /dev/null
+      "
+    ports:
+      - "7000:7000"
+      - "7001:7001"
+      - "7002:7002"
+    volumes:
+      - redis_cluster_data:/data
+    networks:
+      - url-shortener-network
+    profiles:
+      - cluster
+
+  # pgAdmin for database management
+  pgadmin:
+    image: dpage/pgadmin4:latest
+    container_name: url-shortener-pgadmin
+    restart: unless-stopped
+    environment:
+      PGADMIN_DEFAULT_EMAIL: admin@urlshortener.com
+      PGADMIN_DEFAULT_PASSWORD: admin
+      PGADMIN_CONFIG_SERVER_MODE: 'False'
+    ports:
+      - "5050:80"
+    volumes:
+      - pgadmin_data:/var/lib/pgadmin
+    networks:
+      - url-shortener-network
+    depends_on:
+      - postgres
+    profiles:
+      - tools
+
+  # Redis Commander for Redis management
+  redis-commander:
+    image: rediscommander/redis-commander:latest
+    container_name: url-shortener-redis-commander
+    restart: unless-stopped
+    environment:
+      REDIS_HOSTS: local:redis:6379
+    ports:
+      - "8081:8081"
+    networks:
+      - url-shortener-network
+    depends_on:
+      - redis
+    profiles:
+      - tools
+
+volumes:
+  postgres_data:
+    driver: local
+  redis_data:
+    driver: local
+  redis_cluster_data:
+    driver: local
+  pgadmin_data:
+    driver: local
+
+networks:
+  url-shortener-network:
+    driver: bridge
