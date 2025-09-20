@@ -6,15 +6,21 @@ import { config } from './config/environment';
 import { logger } from './config/logger';
 import { db } from './config/database';
 import { redis } from './config/redis';
+import { kafka } from './config/kafka';
 import { errorHandler, notFoundHandler } from './middleware/errorHandler';
 import { skipHealthCheckLogs } from './middleware/requestLogger';
+import { ExpiryManagerService } from './services/expiryManagerService';
 import healthRoutes from './routes/health';
+import redirectRoutes from './routes/redirect';
+import analyticsRoutes from './routes/analytics';
 
 class App {
   public app: express.Application;
+  private expiryManager: ExpiryManagerService;
 
   constructor() {
     this.app = express();
+    this.expiryManager = new ExpiryManagerService();
     this.initializeMiddleware();
     this.initializeRoutes();
     this.initializeErrorHandling();
@@ -78,8 +84,11 @@ class App {
     // Health check routes
     this.app.use('/', healthRoutes);
 
-    // API routes will be added here in future tasks
-    // this.app.use('/api/v1', apiRoutes);
+    // API routes
+    this.app.use('/api/v1/analytics', analyticsRoutes);
+
+    // Redirect routes (must be after health but before catch-all)
+    this.app.use('/', redirectRoutes);
 
     // Root endpoint
     this.app.get('/', (req, res) => {
@@ -120,6 +129,27 @@ class App {
       }
       logger.info('Redis connection established');
 
+      // Initialize Kafka connection (optional - service will work without it)
+      logger.info('Initializing Kafka connection...');
+      try {
+        await kafka.connect();
+        const kafkaHealthy = await kafka.healthCheck();
+        if (kafkaHealthy) {
+          logger.info('Kafka connection established');
+        } else {
+          logger.warn('Kafka connection failed, analytics will use in-memory buffering');
+        }
+      } catch (error) {
+        logger.warn('Kafka initialization failed, analytics will use in-memory buffering', {
+          error: error instanceof Error ? error.message : 'Unknown error',
+        });
+      }
+
+      // Start expiry management background jobs
+      logger.info('Starting expiry management service...');
+      this.expiryManager.start();
+      logger.info('Expiry management service started');
+
       logger.info('Application initialized successfully');
     } catch (error) {
       logger.error('Application initialization failed', {
@@ -134,6 +164,11 @@ class App {
     logger.info('Shutting down application...');
 
     try {
+      // Stop expiry management service
+      logger.info('Stopping expiry management service...');
+      this.expiryManager.stop();
+      logger.info('Expiry management service stopped');
+
       // Close database connections
       await db.close();
       logger.info('Database connections closed');
@@ -142,6 +177,16 @@ class App {
       await redis.close();
       logger.info('Redis connections closed');
 
+      // Close Kafka connections
+      try {
+        await kafka.disconnect();
+        logger.info('Kafka connections closed');
+      } catch (error) {
+        logger.warn('Error closing Kafka connections', {
+          error: error instanceof Error ? error.message : 'Unknown error',
+        });
+      }
+
       logger.info('Application shutdown completed');
     } catch (error) {
       logger.error('Error during application shutdown', {
@@ -149,6 +194,13 @@ class App {
       });
       throw error;
     }
+  }
+
+  /**
+   * Get expiry manager service for external access
+   */
+  public getExpiryManager(): ExpiryManagerService {
+    return this.expiryManager;
   }
 }
 
