@@ -4,6 +4,10 @@ import { MultiLayerCacheService } from './multiLayerCacheService';
 import { URLRepository } from '../repositories/URLRepository';
 import { analyticsEventProducer } from './analyticsEventProducer';
 import { logger } from '../config/logger';
+import { metricsService } from './metricsService';
+import { tracingService } from './tracingService';
+import { addBusinessContext, createChildSpan } from '../middleware/tracingMiddleware';
+import { SpanKind, SpanStatusCode } from '@opentelemetry/api';
 
 /**
  * URL Redirect Service
@@ -60,16 +64,45 @@ export class URLRedirectService {
         const startTime = Date.now();
         this.stats.totalRedirects++;
 
+        // Add business context to current span
+        addBusinessContext({
+            shortCode,
+            operation: 'redirect_url',
+        });
+
         try {
+            // Create child span for cache lookup
+            const lookupSpan = createChildSpan('cache.lookup_url', {
+                'url_shortener.short_code': shortCode,
+                'cache.operation': 'lookup',
+            });
+
             // Lookup URL mapping using multi-layer cache
             const lookupResult = await this.cacheService.lookupUrl(shortCode);
             const urlMapping = lookupResult.urlMapping;
+
+            // Add cache result to span
+            lookupSpan.setAttributes({
+                'cache.hit': urlMapping !== null,
+                'cache.source': lookupResult.source,
+                'cache.latency_ms': lookupResult.latency,
+            });
+            lookupSpan.setStatus({ code: SpanStatusCode.OK });
+            lookupSpan.end();
+
+            // Add cache context to business span
+            addBusinessContext({
+                cacheHit: lookupResult.source !== 'database',
+            });
 
             // URL not found
             if (!urlMapping) {
                 this.stats.notFoundErrors++;
                 const latency = Date.now() - startTime;
                 this.updateAverageLatency(latency);
+
+                // Record metrics
+                metricsService.recordUrlRedirect('404', false, latency);
 
                 logger.info('URL not found', {
                     shortCode,
@@ -100,6 +133,9 @@ export class URLRedirectService {
                 const latency = Date.now() - startTime;
                 this.updateAverageLatency(latency);
 
+                // Record metrics
+                metricsService.recordUrlRedirect('404', false, latency);
+
                 logger.info('URL is deleted', {
                     shortCode,
                     deletedAt: urlMapping.deleted_at,
@@ -128,6 +164,9 @@ export class URLRedirectService {
                 this.stats.expiredErrors++;
                 const latency = Date.now() - startTime;
                 this.updateAverageLatency(latency);
+
+                // Record metrics
+                metricsService.recordUrlRedirect('410', false, latency);
 
                 // Mark expired URL in cache to prevent repeated DB queries
                 await this.markExpiredInCache(shortCode).catch(error => {
@@ -167,6 +206,10 @@ export class URLRedirectService {
             this.updateAverageLatency(latency);
             this.updateCacheHitRate(lookupResult.source);
 
+            // Record metrics
+            const cacheHit = lookupResult.source !== 'database';
+            metricsService.recordUrlRedirect('301', cacheHit, latency);
+
             // Update access tracking asynchronously (don't block redirect)
             this.updateAccessTracking(shortCode, urlMapping).catch(error => {
                 logger.error('Failed to update access tracking', {
@@ -176,6 +219,12 @@ export class URLRedirectService {
             });
 
             // Publish analytics event asynchronously (don't block redirect)
+            // Create child span for analytics
+            const analyticsSpan = createChildSpan('analytics.publish_event', {
+                'url_shortener.short_code': shortCode,
+                'analytics.event_type': 'click',
+            });
+
             // Extract analytics data from request
             const analyticsData = {
                 short_code: shortCode,
@@ -184,7 +233,17 @@ export class URLRedirectService {
                 referrer: req.get('Referer'),
             };
 
-            this.analyticsService.publishClickEvent(analyticsData).catch((error: any) => {
+            this.analyticsService.publishClickEvent(analyticsData).then(() => {
+                analyticsSpan.setStatus({ code: SpanStatusCode.OK });
+                analyticsSpan.end();
+            }).catch((error: any) => {
+                analyticsSpan.recordException(error);
+                analyticsSpan.setStatus({
+                    code: SpanStatusCode.ERROR,
+                    message: error.message || 'Analytics publish failed',
+                });
+                analyticsSpan.end();
+
                 logger.error('Failed to publish analytics event', {
                     shortCode,
                     error: error instanceof Error ? error.message : 'Unknown error',
@@ -217,6 +276,10 @@ export class URLRedirectService {
             this.stats.serverErrors++;
             const latency = Date.now() - startTime;
             this.updateAverageLatency(latency);
+
+            // Record metrics
+            metricsService.recordUrlRedirect('500', false, latency);
+            metricsService.recordError('redirect_error', 'url_redirect_service');
 
             logger.error('Error handling URL redirect', {
                 shortCode,
