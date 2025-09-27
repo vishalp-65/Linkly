@@ -8,21 +8,73 @@ const redirectService = new URLRedirectService();
 /**
  * Handle short URL redirects
  * GET /:shortCode - Redirect to long URL
+ * Requirements: 2.1, 2.2, 2.3, 2.4 - Sub-50ms response time, proper HTTP status codes
  */
 router.get('/:shortCode', async (req: Request, res: Response) => {
+    const startTime = Date.now();
     const { shortCode } = req.params;
 
-    // Validate short code format
-    if (!shortCode || shortCode.length < 3 || shortCode.length > 10) {
-        return res.status(400).json({
-            error: 'Invalid short code',
-            message: 'Short code must be between 3 and 10 characters',
+    try {
+        // Validate short code format (alphanumeric, 3-10 characters)
+        if (!shortCode || !/^[a-zA-Z0-9_-]{3,10}$/.test(shortCode)) {
+            const responseTime = Date.now() - startTime;
+            logger.warn('Invalid short code format', {
+                shortCode,
+                ip: req.ip,
+                userAgent: req.get('User-Agent'),
+                responseTime
+            });
+
+            return res.status(400).json({
+                success: false,
+                error: 'INVALID_SHORT_CODE',
+                message: 'Short code must be 3-10 characters long and contain only letters, numbers, hyphens, and underscores',
+                timestamp: new Date().toISOString()
+            });
+        }
+
+        // Handle redirect with performance tracking
+        const result = await redirectService.handleRedirect(req, res, shortCode);
+        const responseTime = Date.now() - startTime;
+
+        // Log performance metrics (only if slow or for monitoring)
+        if (responseTime > 50) {
+            logger.warn('Slow redirect response', {
+                shortCode,
+                responseTime,
+                statusCode: result?.statusCode || 'unknown',
+                cacheSource: result?.cacheSource || 'unknown'
+            });
+        } else {
+            logger.debug('Redirect handled', {
+                shortCode,
+                responseTime,
+                statusCode: result?.statusCode || 'unknown',
+                cacheSource: result?.cacheSource || 'unknown'
+            });
+        }
+
+        return; // Explicit return to satisfy TypeScript
+    } catch (error) {
+        const responseTime = Date.now() - startTime;
+
+        logger.error('Redirect handling failed', {
+            shortCode,
+            error: error instanceof Error ? error.message : 'Unknown error',
+            stack: error instanceof Error ? error.stack : undefined,
+            responseTime,
+            ip: req.ip,
+            userAgent: req.get('User-Agent')
+        });
+
+        // Return 500 for unexpected errors
+        return res.status(500).json({
+            success: false,
+            error: 'REDIRECT_FAILED',
+            message: 'An error occurred while processing the redirect',
+            timestamp: new Date().toISOString()
         });
     }
-
-    // Handle redirect
-    await redirectService.handleRedirect(req, res, shortCode);
-    return; // Explicit return to satisfy TypeScript
 });
 
 /**
