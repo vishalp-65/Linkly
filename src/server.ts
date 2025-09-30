@@ -1,6 +1,10 @@
+// Import tracing first to ensure proper instrumentation
+import './tracing';
+
 import App from './app';
 import { config } from './config/environment';
 import { logger } from './config/logger';
+import { tracingService } from './services/tracingService';
 
 // Handle uncaught exceptions
 process.on('uncaughtException', (error: Error) => {
@@ -48,6 +52,9 @@ async function gracefulShutdown(): Promise<void> {
         if (app) {
             await app.shutdown();
         }
+
+        // Shutdown tracing
+        await tracingService.shutdown();
 
         // Exit process
         process.exit(0);
