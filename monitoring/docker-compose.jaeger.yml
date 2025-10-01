@@ -1,0 +1,123 @@
+version: '3.8'
+
+services:
+  # Jaeger all-in-one for development
+  jaeger:
+    image: jaegertracing/all-in-one:1.50
+    container_name: url-shortener-jaeger
+    ports:
+      - "16686:16686"  # Jaeger UI
+      - "14268:14268"  # HTTP collector
+      - "14250:14250"  # gRPC collector
+      - "6831:6831/udp"  # UDP agent
+      - "6832:6832/udp"  # UDP agent
+    environment:
+      - COLLECTOR_OTLP_ENABLED=true
+      - COLLECTOR_ZIPKIN_HOST_PORT=:9411
+    networks:
+      - tracing
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "wget", "--quiet", "--tries=1", "--spider", "http://localhost:16686/"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+
+  # Jaeger production setup (optional - for production use)
+  jaeger-collector:
+    image: jaegertracing/jaeger-collector:1.50
+    container_name: url-shortener-jaeger-collector
+    ports:
+      - "14269:14269"  # Admin port
+      - "14268:14268"  # HTTP collector
+      - "14250:14250"  # gRPC collector
+      - "9411:9411"    # Zipkin compatible endpoint
+    environment:
+      - SPAN_STORAGE_TYPE=elasticsearch
+      - ES_SERVER_URLS=http://elasticsearch:9200
+      - ES_TAGS_AS_FIELDS_ALL=true
+      - COLLECTOR_OTLP_ENABLED=true
+    networks:
+      - tracing
+    restart: unless-stopped
+    depends_on:
+      - elasticsearch
+    profiles:
+      - production
+
+  jaeger-query:
+    image: jaegertracing/jaeger-query:1.50
+    container_name: url-shortener-jaeger-query
+    ports:
+      - "16687:16686"  # Jaeger UI (different port for production)
+    environment:
+      - SPAN_STORAGE_TYPE=elasticsearch
+      - ES_SERVER_URLS=http://elasticsearch:9200
+      - ES_TAGS_AS_FIELDS_ALL=true
+    networks:
+      - tracing
+    restart: unless-stopped
+    depends_on:
+      - elasticsearch
+    profiles:
+      - production
+
+  jaeger-agent:
+    image: jaegertracing/jaeger-agent:1.50
+    container_name: url-shortener-jaeger-agent
+    ports:
+      - "6831:6831/udp"
+      - "6832:6832/udp"
+      - "5778:5778"
+    environment:
+      - REPORTER_GRPC_HOST_PORT=jaeger-collector:14250
+    networks:
+      - tracing
+    restart: unless-stopped
+    depends_on:
+      - jaeger-collector
+    profiles:
+      - production
+
+  # Elasticsearch for Jaeger storage (production)
+  elasticsearch:
+    image: docker.elastic.co/elasticsearch/elasticsearch:8.10.0
+    container_name: url-shortener-elasticsearch
+    ports:
+      - "9200:9200"
+      - "9300:9300"
+    environment:
+      - discovery.type=single-node
+      - xpack.security.enabled=false
+      - "ES_JAVA_OPTS=-Xms512m -Xmx512m"
+    volumes:
+      - elasticsearch_data:/usr/share/elasticsearch/data
+    networks:
+      - tracing
+    restart: unless-stopped
+    profiles:
+      - production
+
+  # Kibana for Elasticsearch management (optional)
+  kibana:
+    image: docker.elastic.co/kibana/kibana:8.10.0
+    container_name: url-shortener-kibana
+    ports:
+      - "5601:5601"
+    environment:
+      - ELASTICSEARCH_HOSTS=http://elasticsearch:9200
+    networks:
+      - tracing
+    restart: unless-stopped
+    depends_on:
+      - elasticsearch
+    profiles:
+      - production
+
+volumes:
+  elasticsearch_data:
+    driver: local
+
+networks:
+  tracing:
+    driver: bridge
