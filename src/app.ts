@@ -9,10 +9,16 @@ import { redis } from './config/redis';
 import { kafka } from './config/kafka';
 import { errorHandler, notFoundHandler } from './middleware/errorHandler';
 import { skipHealthCheckLogs } from './middleware/requestLogger';
+import { connectionCounterMiddleware, skipMetrics } from './middleware/metricsMiddleware';
+import { tracingMiddleware, traceContextMiddleware } from './middleware/tracingMiddleware';
 import { ExpiryManagerService } from './services/expiryManagerService';
+import { optionalAuth } from './middleware/auth';
+import { adaptiveRateLimit } from './middleware/rateLimiter';
 import healthRoutes from './routes/health';
 import redirectRoutes from './routes/redirect';
 import analyticsRoutes from './routes/analytics';
+import shortenRoutes from './routes/shorten';
+import urlRoutes from './routes/url';
 
 class App {
   public app: express.Application;
@@ -76,18 +82,39 @@ class App {
     // Request logging middleware (skip for health checks)
     this.app.use(skipHealthCheckLogs);
 
+    // Tracing middleware (adds custom spans and attributes)
+    this.app.use(tracingMiddleware);
+
+    // Trace context middleware (adds trace IDs to logs and headers)
+    this.app.use(traceContextMiddleware);
+
+    // Metrics collection middleware (skip for metrics endpoint)
+    this.app.use(skipMetrics);
+
+    // Connection counter middleware
+    this.app.use(connectionCounterMiddleware);
+
     // Trust proxy (for accurate IP addresses behind load balancers)
     this.app.set('trust proxy', 1);
   }
 
   private initializeRoutes(): void {
-    // Health check routes
+    // Health check routes (no auth or rate limiting)
     this.app.use('/', healthRoutes);
 
+    // Apply optional authentication to all API routes
+    this.app.use('/api', optionalAuth);
+
+    // Apply rate limiting to all API routes
+    this.app.use('/api', adaptiveRateLimit);
+
     // API routes
+    this.app.use('/api/v1/shorten', shortenRoutes);
+    this.app.use('/api/v1/url', urlRoutes);
     this.app.use('/api/v1/analytics', analyticsRoutes);
 
-    // Redirect routes (must be after health but before catch-all)
+    // Redirect routes (must be after health and API routes but before catch-all)
+    // Apply light rate limiting to redirects to prevent abuse
     this.app.use('/', redirectRoutes);
 
     // Root endpoint
@@ -98,6 +125,12 @@ class App {
         environment: config.nodeEnv,
         timestamp: new Date().toISOString(),
         uptime: process.uptime(),
+        endpoints: {
+          shorten: '/api/v1/shorten',
+          analytics: '/api/v1/analytics',
+          health: '/health',
+          docs: '/api/docs'
+        }
       });
     });
   }
