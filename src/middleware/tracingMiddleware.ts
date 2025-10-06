@@ -27,6 +27,11 @@ export const tracingMiddleware = (req: Request, res: Response, next: NextFunctio
         },
     });
 
+    // If span is not available, skip tracing for this request
+    if (!span) {
+        return next();
+    }
+
     // Add custom attributes based on request type
     if (req.path.startsWith('/api/v1/shorten')) {
         span.setAttribute('url_shortener.operation', 'create_short_url');
@@ -189,10 +194,24 @@ export function createChildSpan(
     name: string,
     attributes?: Record<string, string | number | boolean>
 ): any {
-    return tracingService.createSpan(name, {
+    const span = tracingService.createSpan(name, {
         kind: SpanKind.INTERNAL,
         attributes,
     });
+
+    // Return a no-op span if tracing is not available
+    if (!span) {
+        return {
+            setStatus: () => { },
+            setAttribute: () => { },
+            setAttributes: () => { },
+            addEvent: () => { },
+            recordException: () => { },
+            end: () => { },
+        };
+    }
+
+    return span;
 }
 
 /**
