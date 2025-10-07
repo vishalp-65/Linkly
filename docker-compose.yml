@@ -41,6 +41,137 @@ services:
       timeout: 5s
       retries: 5
 
+  # Zookeeper for Kafka
+  zookeeper:
+    image: confluentinc/cp-zookeeper:7.4.0
+    container_name: url-shortener-zookeeper
+    restart: unless-stopped
+    environment:
+      ZOOKEEPER_CLIENT_PORT: 2181
+      ZOOKEEPER_TICK_TIME: 2000
+    ports:
+      - "2181:2181"
+    volumes:
+      - zookeeper_data:/var/lib/zookeeper/data
+      - zookeeper_logs:/var/lib/zookeeper/log
+    networks:
+      - url-shortener-network
+    healthcheck:
+      test: ["CMD", "nc", "-z", "localhost", "2181"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  # Kafka Message Broker
+  kafka:
+    image: confluentinc/cp-kafka:7.4.0
+    container_name: url-shortener-kafka
+    restart: unless-stopped
+    depends_on:
+      zookeeper:
+        condition: service_healthy
+    ports:
+      - "9092:9092"
+      - "9101:9101"
+    environment:
+      KAFKA_BROKER_ID: 1
+      KAFKA_ZOOKEEPER_CONNECT: zookeeper:2181
+      KAFKA_LISTENER_SECURITY_PROTOCOL_MAP: PLAINTEXT:PLAINTEXT,PLAINTEXT_HOST:PLAINTEXT
+      KAFKA_ADVERTISED_LISTENERS: PLAINTEXT://kafka:29092,PLAINTEXT_HOST://localhost:9092
+      KAFKA_OFFSETS_TOPIC_REPLICATION_FACTOR: 1
+      KAFKA_TRANSACTION_STATE_LOG_MIN_ISR: 1
+      KAFKA_TRANSACTION_STATE_LOG_REPLICATION_FACTOR: 1
+      KAFKA_GROUP_INITIAL_REBALANCE_DELAY_MS: 0
+      KAFKA_JMX_PORT: 9101
+      KAFKA_JMX_HOSTNAME: localhost
+      KAFKA_AUTO_CREATE_TOPICS_ENABLE: 'true'
+      KAFKA_DELETE_TOPIC_ENABLE: 'true'
+      KAFKA_LOG_RETENTION_HOURS: 168
+      KAFKA_LOG_SEGMENT_BYTES: 1073741824
+      KAFKA_LOG_RETENTION_CHECK_INTERVAL_MS: 300000
+    volumes:
+      - kafka_data:/var/lib/kafka/data
+    networks:
+      - url-shortener-network
+    healthcheck:
+      test: ["CMD", "kafka-broker-api-versions", "--bootstrap-server", "localhost:9092"]
+      interval: 10s
+      timeout: 10s
+      retries: 5
+
+  # Jaeger for Distributed Tracing
+  jaeger:
+    image: jaegertracing/all-in-one:1.49
+    container_name: url-shortener-jaeger
+    restart: unless-stopped
+    ports:
+      - "16686:16686"  # Jaeger UI
+      - "14268:14268"  # HTTP collector
+      - "14250:14250"  # gRPC collector
+      - "6831:6831/udp"  # UDP agent
+      - "6832:6832/udp"  # UDP agent
+    environment:
+      COLLECTOR_OTLP_ENABLED: true
+      COLLECTOR_ZIPKIN_HOST_PORT: ":9411"
+    networks:
+      - url-shortener-network
+    healthcheck:
+      test: ["CMD", "wget", "--quiet", "--tries=1", "--spider", "http://localhost:16686/"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+
+  # Prometheus for Metrics Collection
+  prometheus:
+    image: prom/prometheus:v2.47.0
+    container_name: url-shortener-prometheus
+    restart: unless-stopped
+    ports:
+      - "9090:9090"
+    volumes:
+      - ./monitoring/prometheus/prometheus.yml:/etc/prometheus/prometheus.yml
+      - ./monitoring/prometheus/alerts.yml:/etc/prometheus/alerts.yml
+      - prometheus_data:/prometheus
+    command:
+      - '--config.file=/etc/prometheus/prometheus.yml'
+      - '--storage.tsdb.path=/prometheus'
+      - '--web.console.libraries=/etc/prometheus/console_libraries'
+      - '--web.console.templates=/etc/prometheus/consoles'
+      - '--storage.tsdb.retention.time=30d'
+      - '--web.enable-lifecycle'
+    networks:
+      - url-shortener-network
+    healthcheck:
+      test: ["CMD", "wget", "--quiet", "--tries=1", "--spider", "http://localhost:9090/-/healthy"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+
+  # Grafana for Visualization
+  grafana:
+    image: grafana/grafana:10.1.0
+    container_name: url-shortener-grafana
+    restart: unless-stopped
+    ports:
+      - "3001:3000"
+    volumes:
+      - grafana_data:/var/lib/grafana
+      - ./monitoring/grafana/provisioning:/etc/grafana/provisioning
+      - ./monitoring/grafana/dashboards:/var/lib/grafana/dashboards
+    environment:
+      GF_SECURITY_ADMIN_PASSWORD: admin123
+      GF_USERS_ALLOW_SIGN_UP: false
+      GF_SERVER_ROOT_URL: http://localhost:3001
+    networks:
+      - url-shortener-network
+    depends_on:
+      - prometheus
+    healthcheck:
+      test: ["CMD-SHELL", "curl -f http://localhost:3000/api/health || exit 1"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+
   # URL Shortener API (Development)
   api-dev:
     build:
@@ -59,11 +190,16 @@ services:
       DB_PASSWORD: password
       REDIS_HOST: redis
       REDIS_PORT: 6379
+      KAFKA_BROKERS: kafka:29092
+      KAFKA_CLIENT_ID: url-shortener-service
+      JAEGER_ENDPOINT: http://jaeger:14268/api/traces
+      TRACING_ENABLED: true
       JWT_SECRET: dev-jwt-secret-key-change-this-in-production-32-chars
       API_KEY_SECRET: dev-api-key-secret-change-this-in-production-32-chars
       LOG_LEVEL: debug
     ports:
       - "3000:3000"
+      - "9091:9090"  # Metrics port
     volumes:
       - .:/app
       - /app/node_modules
@@ -74,6 +210,10 @@ services:
       postgres:
         condition: service_healthy
       redis:
+        condition: service_healthy
+      kafka:
+        condition: service_healthy
+      jaeger:
         condition: service_healthy
     profiles:
       - dev
@@ -96,11 +236,16 @@ services:
       DB_PASSWORD: password
       REDIS_HOST: redis
       REDIS_PORT: 6379
+      KAFKA_BROKERS: kafka:29092
+      KAFKA_CLIENT_ID: url-shortener-service
+      JAEGER_ENDPOINT: http://jaeger:14268/api/traces
+      TRACING_ENABLED: true
       JWT_SECRET: prod-jwt-secret-key-change-this-in-production-32-chars
       API_KEY_SECRET: prod-api-key-secret-change-this-in-production-32-chars
       LOG_LEVEL: info
     ports:
       - "3000:3000"
+      - "9091:9090"  # Metrics port
     volumes:
       - ./logs:/app/logs
     networks:
@@ -110,34 +255,14 @@ services:
         condition: service_healthy
       redis:
         condition: service_healthy
+      kafka:
+        condition: service_healthy
+      jaeger:
+        condition: service_healthy
     profiles:
       - prod
 
-  # Redis Cluster (for testing cluster functionality)
-  redis-cluster:
-    image: redis:7-alpine
-    container_name: url-shortener-redis-cluster
-    restart: unless-stopped
-    command: >
-      sh -c "
-        redis-server --port 7000 --cluster-enabled yes --cluster-config-file nodes-7000.conf --cluster-node-timeout 5000 --appendonly yes --daemonize yes &&
-        redis-server --port 7001 --cluster-enabled yes --cluster-config-file nodes-7001.conf --cluster-node-timeout 5000 --appendonly yes --daemonize yes &&
-        redis-server --port 7002 --cluster-enabled yes --cluster-config-file nodes-7002.conf --cluster-node-timeout 5000 --appendonly yes --daemonize yes &&
-        sleep 5 &&
-        redis-cli --cluster create 127.0.0.1:7000 127.0.0.1:7001 127.0.0.1:7002 --cluster-replicas 0 --cluster-yes &&
-        tail -f /dev/null
-      "
-    ports:
-      - "7000:7000"
-      - "7001:7001"
-      - "7002:7002"
-    volumes:
-      - redis_cluster_data:/data
-    networks:
-      - url-shortener-network
-    profiles:
-      - cluster
-
+  # Management Tools (Optional)
   # pgAdmin for database management
   pgadmin:
     image: dpage/pgadmin4:latest
@@ -174,12 +299,38 @@ services:
     profiles:
       - tools
 
+  # Kafka UI for Kafka management
+  kafka-ui:
+    image: provectuslabs/kafka-ui:latest
+    container_name: url-shortener-kafka-ui
+    restart: unless-stopped
+    ports:
+      - "8080:8080"
+    environment:
+      KAFKA_CLUSTERS_0_NAME: local
+      KAFKA_CLUSTERS_0_BOOTSTRAPSERVERS: kafka:29092
+      KAFKA_CLUSTERS_0_ZOOKEEPER: zookeeper:2181
+    networks:
+      - url-shortener-network
+    depends_on:
+      - kafka
+    profiles:
+      - tools
+
 volumes:
   postgres_data:
     driver: local
   redis_data:
     driver: local
-  redis_cluster_data:
+  zookeeper_data:
+    driver: local
+  zookeeper_logs:
+    driver: local
+  kafka_data:
+    driver: local
+  prometheus_data:
+    driver: local
+  grafana_data:
     driver: local
   pgadmin_data:
     driver: local

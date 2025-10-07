@@ -14,11 +14,31 @@ COPY package*.json ./
 RUN npm ci --only=production && npm cache clean --force
 
 # Development stage
-FROM base AS development
-RUN npm ci
+FROM node:18-alpine AS development
+
+# Set working directory
+WORKDIR /app
+
+# Install dependencies for building native modules and development tools
+RUN apk add --no-cache python3 make g++ git
+
+# Copy package files first for better caching
+COPY package*.json ./
+
+# Install ALL dependencies (including dev dependencies)
+RUN npm ci && npm cache clean --force
+
+# Copy source code
 COPY . .
+
+# Create logs directory
+RUN mkdir -p logs
+
+# Expose port
 EXPOSE 3000
-CMD ["npm", "run", "dev"]
+
+# Start development server with fallback
+CMD ["sh", "-c", "npm run dev || (echo 'Installing dependencies...' && npm install && npm run dev)"]
 
 # Build stage
 FROM base AS build
