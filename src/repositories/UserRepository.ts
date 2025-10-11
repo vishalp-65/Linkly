@@ -1,71 +1,49 @@
-import { BaseRepository } from './BaseRepository';
+import { db } from '../config/database';
+import { logger } from '../config/logger';
 import {
     User,
-    CreateUserInput,
-    UpdateUserInput,
-    UserWithStats,
-    PaginatedResult,
-    NotFoundError,
-    BaseRepository as IBaseRepository,
-} from '../types/database';
-import { logger } from '../config/logger';
+    RefreshToken,
+    PasswordResetToken,
+    EmailVerificationToken,
+    UpdateProfileRequest
+} from '../types/user.types';
 
-export class UserRepository extends BaseRepository implements IBaseRepository<User, CreateUserInput, UpdateUserInput> {
-
+export class UserRepository {
     /**
      * Create a new user
      */
-    async create(input: CreateUserInput): Promise<User> {
+    async create(userData: {
+        email: string;
+        passwordHash: string;
+        firstName?: string;
+        lastName?: string;
+        googleId?: string;
+        avatarUrl?: string;
+    }): Promise<User> {
+        const query = `
+      INSERT INTO users (email, password_hash, first_name, last_name, google_id, avatar_url)
+      VALUES ($1, $2, $3, $4, $5, $6)
+      RETURNING user_id as "userId", email, first_name as "firstName", last_name as "lastName", 
+                google_id as "googleId", avatar_url as "avatarUrl", email_verified as "emailVerified",
+                is_active as "isActive", role, created_at as "createdAt", 
+                updated_at as "updatedAt", last_login_at as "lastLoginAt"
+    `;
+
+        const values = [
+            userData.email,
+            userData.passwordHash,
+            userData.firstName || null,
+            userData.lastName || null,
+            userData.googleId || null,
+            userData.avatarUrl || null,
+        ];
+
         try {
-            const data = {
-                email: input.email,
-                password_hash: input.password_hash,
-                duplicate_strategy: input.duplicate_strategy || 'generate_new',
-                default_expiry_days: input.default_expiry_days || null,
-                rate_limit_tier: input.rate_limit_tier || 'standard',
-                api_key_hash: input.api_key_hash || null,
-                is_active: true,
-                created_at: new Date(),
-                updated_at: new Date(),
-            };
-
-            const { query, params } = this.buildInsertQuery('users', data);
-            const result = await this.query(query, params);
-
-            logger.info('User created', {
-                userId: result.rows[0].user_id,
-                email: input.email,
-                rateLimitTier: input.rate_limit_tier,
-            });
-
-            return result.rows[0] as User;
+            const result = await db.query(query, values);
+            return result.rows[0];
         } catch (error) {
-            logger.error('Failed to create user', {
-                email: input.email,
-                error: error instanceof Error ? error.message : 'Unknown error',
-            });
-            throw this.handleDatabaseError(error);
-        }
-    }
-
-    /**
-     * Find user by ID
-     */
-    async findById(userId: number): Promise<User | null> {
-        try {
-            const query = `
-        SELECT * FROM users
-        WHERE user_id = $1 AND is_active = TRUE
-      `;
-
-            const result = await this.query(query, [userId]);
-            return result.rows[0] || null;
-        } catch (error) {
-            logger.error('Failed to find user by ID', {
-                userId,
-                error: error instanceof Error ? error.message : 'Unknown error',
-            });
-            throw this.handleDatabaseError(error);
+            logger.error('Error creating user', { error, userData: { email: userData.email } });
+            throw error;
         }
     }
 
@@ -73,167 +51,143 @@ export class UserRepository extends BaseRepository implements IBaseRepository<Us
      * Find user by email
      */
     async findByEmail(email: string): Promise<User | null> {
-        try {
-            const query = `
-        SELECT * FROM users
-        WHERE email = $1 AND is_active = TRUE
-      `;
+        const query = `
+      SELECT user_id as "userId", email, first_name as "firstName", last_name as "lastName", 
+             google_id as "googleId", avatar_url as "avatarUrl", email_verified as "emailVerified",
+             is_active as "isActive", role, created_at as "createdAt", 
+             updated_at as "updatedAt", last_login_at as "lastLoginAt"
+      FROM users 
+      WHERE email = $1
+    `;
 
-            const result = await this.query(query, [email]);
+        try {
+            const result = await db.query(query, [email]);
             return result.rows[0] || null;
         } catch (error) {
-            logger.error('Failed to find user by email', {
-                email,
-                error: error instanceof Error ? error.message : 'Unknown error',
-            });
-            throw this.handleDatabaseError(error);
+            logger.error('Error finding user by email', { error, email });
+            throw error;
         }
     }
 
     /**
-     * Find user by API key hash
+     * Find user by ID
      */
-    async findByApiKeyHash(apiKeyHash: string): Promise<User | null> {
-        try {
-            const query = `
-        SELECT * FROM users
-        WHERE api_key_hash = $1 AND is_active = TRUE
-      `;
+    async findById(id: number): Promise<User | null> {
+        const query = `
+      SELECT user_id as "userId", email, first_name as "firstName", last_name as "lastName", 
+             google_id as "googleId", avatar_url as "avatarUrl", email_verified as "emailVerified",
+             is_active as "isActive", role, created_at as "createdAt", 
+             updated_at as "updatedAt", last_login_at as "lastLoginAt"
+      FROM users 
+      WHERE user_id = $1
+    `;
 
-            const result = await this.query(query, [apiKeyHash]);
+        try {
+            const result = await db.query(query, [id]);
             return result.rows[0] || null;
         } catch (error) {
-            logger.error('Failed to find user by API key', {
-                error: error instanceof Error ? error.message : 'Unknown error',
-            });
-            throw this.handleDatabaseError(error);
+            logger.error('Error finding user by ID', { error, id });
+            throw error;
         }
     }
 
     /**
-     * Update user
+     * Find user by Google ID
      */
-    async update(userId: number, input: UpdateUserInput): Promise<User | null> {
+    async findByGoogleId(googleId: string): Promise<User | null> {
+        const query = `
+      SELECT user_id as "userId", email, first_name as "firstName", last_name as "lastName", 
+             google_id as "googleId", avatar_url as "avatarUrl", email_verified as "emailVerified",
+             is_active as "isActive", role, created_at as "createdAt", 
+             updated_at as "updatedAt", last_login_at as "lastLoginAt"
+      FROM users 
+      WHERE google_id = $1
+    `;
+
         try {
-            const existing = await this.findById(userId);
-            if (!existing) {
-                throw new NotFoundError('User', userId);
-            }
-
-            const data = {
-                ...input,
-                updated_at: new Date(),
-            };
-
-            // Remove undefined values
-            Object.keys(data).forEach(key => {
-                if (data[key as keyof typeof data] === undefined) {
-                    delete data[key as keyof typeof data];
-                }
-            });
-
-            const { query, params } = this.buildUpdateQuery(
-                'users',
-                data,
-                'user_id = $' + (Object.keys(data).length + 1),
-                [userId]
-            );
-
-            const result = await this.query(query, params);
-
-            logger.info('User updated', {
-                userId,
-                updatedFields: Object.keys(input),
-            });
-
+            const result = await db.query(query, [googleId]);
             return result.rows[0] || null;
         } catch (error) {
-            logger.error('Failed to update user', {
-                userId,
-                error: error instanceof Error ? error.message : 'Unknown error',
-            });
-            throw this.handleDatabaseError(error);
+            logger.error('Error finding user by Google ID', { error, googleId });
+            throw error;
         }
     }
 
     /**
-     * Soft delete user (deactivate)
+     * Get password hash for user
      */
-    async delete(userId: number): Promise<boolean> {
+    async getPasswordHash(userId: number): Promise<string | null> {
+        const query = 'SELECT password_hash FROM users WHERE user_id = $1';
+
         try {
-            const query = `
-        UPDATE users
-        SET is_active = FALSE, updated_at = NOW()
-        WHERE user_id = $1 AND is_active = TRUE
-        RETURNING user_id
-      `;
-
-            const result = await this.query(query, [userId]);
-
-            if (result.rows.length === 0) {
-                return false;
-            }
-
-            logger.info('User deactivated', { userId });
-            return true;
+            const result = await db.query(query, [userId]);
+            return result.rows[0]?.password_hash || null;
         } catch (error) {
-            logger.error('Failed to deactivate user', {
-                userId,
-                error: error instanceof Error ? error.message : 'Unknown error',
-            });
-            throw this.handleDatabaseError(error);
+            logger.error('Error getting password hash', { error, userId });
+            throw error;
         }
     }
 
     /**
-     * Check if user exists
+     * Update user password
      */
-    async exists(userId: number): Promise<boolean> {
-        try {
-            const query = `
-        SELECT 1 FROM users
-        WHERE user_id = $1 AND is_active = TRUE
-        LIMIT 1
-      `;
+    async updatePassword(userId: number, passwordHash: string): Promise<void> {
+        const query = 'UPDATE users SET password_hash = $1, updated_at = CURRENT_TIMESTAMP WHERE user_id = $2';
 
-            const result = await this.query(query, [userId]);
-            return result.rows.length > 0;
+        try {
+            await db.query(query, [passwordHash, userId]);
         } catch (error) {
-            logger.error('Failed to check user existence', {
-                userId,
-                error: error instanceof Error ? error.message : 'Unknown error',
-            });
-            throw this.handleDatabaseError(error);
+            logger.error('Error updating password', { error, userId });
+            throw error;
         }
     }
 
     /**
-     * Check if email exists
+     * Update user profile
      */
-    async emailExists(email: string, excludeUserId?: number): Promise<boolean> {
+    async updateProfile(userId: number, data: UpdateProfileRequest): Promise<User | null> {
+        const fields = [];
+        const values = [];
+        let paramCount = 1;
+
+        if (data.firstName !== undefined) {
+            fields.push(`first_name = $${paramCount++}`);
+            values.push(data.firstName);
+        }
+
+        if (data.lastName !== undefined) {
+            fields.push(`last_name = $${paramCount++}`);
+            values.push(data.lastName);
+        }
+
+        if (data.avatarUrl !== undefined) {
+            fields.push(`avatar_url = $${paramCount++}`);
+            values.push(data.avatarUrl);
+        }
+
+        if (fields.length === 0) {
+            return this.findById(userId);
+        }
+
+        fields.push(`updated_at = CURRENT_TIMESTAMP`);
+        values.push(userId);
+
+        const query = `
+      UPDATE users 
+      SET ${fields.join(', ')}
+      WHERE user_id = $${paramCount}
+      RETURNING user_id as "userId", email, first_name as "firstName", last_name as "lastName", 
+                google_id as "googleId", avatar_url as "avatarUrl", email_verified as "emailVerified",
+                is_active as "isActive", role, created_at as "createdAt", 
+                updated_at as "updatedAt", last_login_at as "lastLoginAt"
+    `;
+
         try {
-            let query = `
-        SELECT 1 FROM users
-        WHERE email = $1 AND is_active = TRUE
-      `;
-            const params = [email];
-
-            if (excludeUserId) {
-                query += ` AND user_id != $2`;
-                params.push(excludeUserId.toString());
-            }
-
-            query += ` LIMIT 1`;
-
-            const result = await this.query(query, params);
-            return result.rows.length > 0;
+            const result = await db.query(query, values);
+            return result.rows[0] || null;
         } catch (error) {
-            logger.error('Failed to check email existence', {
-                email,
-                excludeUserId,
-                error: error instanceof Error ? error.message : 'Unknown error',
-            });
-            throw this.handleDatabaseError(error);
+            logger.error('Error updating profile', { error, userId, data });
+            throw error;
         }
     }
 
@@ -241,295 +195,216 @@ export class UserRepository extends BaseRepository implements IBaseRepository<Us
      * Update last login timestamp
      */
     async updateLastLogin(userId: number): Promise<void> {
+        const query = 'UPDATE users SET last_login_at = CURRENT_TIMESTAMP WHERE user_id = $1';
+
         try {
-            const query = `
-        UPDATE users
-        SET last_login_at = NOW(), updated_at = NOW()
-        WHERE user_id = $1 AND is_active = TRUE
-      `;
-
-            await this.query(query, [userId]);
-
-            logger.debug('Last login updated', { userId });
+            await db.query(query, [userId]);
         } catch (error) {
-            logger.error('Failed to update last login', {
-                userId,
-                error: error instanceof Error ? error.message : 'Unknown error',
-            });
-            // Don't throw error for login timestamp updates
+            logger.error('Error updating last login', { error, userId });
+            throw error;
         }
     }
 
     /**
-     * Get user with statistics
+     * Create refresh token
      */
-    async getUserWithStats(userId: number): Promise<UserWithStats | null> {
+    async createRefreshToken(userId: number, token: string, expiresAt: Date): Promise<void> {
+        const query = `
+      INSERT INTO refresh_tokens (user_id, token, expires_at)
+      VALUES ($1, $2, $3)
+    `;
+
         try {
-            const query = `
-        SELECT 
-          u.*,
-          COUNT(um.short_code) as total_urls,
-          COUNT(CASE WHEN NOT um.is_deleted THEN 1 END) as active_urls,
-          SUM(um.access_count) as total_clicks,
-          MAX(um.last_accessed_at) as last_url_accessed
-        FROM users u
-        LEFT JOIN url_mappings um ON u.user_id = um.user_id
-        WHERE u.user_id = $1 AND u.is_active = TRUE
-        GROUP BY u.user_id
-      `;
-
-            const result = await this.query(query, [userId]);
-
-            if (result.rows.length === 0) {
-                return null;
-            }
-
-            const row = result.rows[0];
-            return {
-                ...row,
-                total_urls: parseInt(row.total_urls, 10),
-                active_urls: parseInt(row.active_urls, 10),
-                total_clicks: parseInt(row.total_clicks || '0', 10),
-            } as UserWithStats;
+            await db.query(query, [userId, token, expiresAt]);
         } catch (error) {
-            logger.error('Failed to get user with stats', {
-                userId,
-                error: error instanceof Error ? error.message : 'Unknown error',
-            });
-            throw this.handleDatabaseError(error);
+            logger.error('Error creating refresh token', { error, userId });
+            throw error;
         }
     }
 
     /**
-     * Get all users with pagination and filters
+     * Find refresh token
      */
-    async findAll(
-        filters: {
-            email_like?: string;
-            rate_limit_tier?: string;
-            created_after?: Date;
-            created_before?: Date;
-            is_active?: boolean;
-        } = {},
-        page: number = 1,
-        pageSize: number = 20
-    ): Promise<PaginatedResult<UserWithStats>> {
+    async findRefreshToken(token: string): Promise<RefreshToken | null> {
+        const query = `
+      SELECT id, user_id as "userId", token, expires_at as "expiresAt", 
+             revoked, created_at as "createdAt"
+      FROM refresh_tokens 
+      WHERE token = $1
+    `;
+
         try {
-            const baseFilters = {
-                is_active: true,
-                ...filters,
-            };
-
-            const { whereClause, params, nextParamIndex } = this.buildWhereClause(baseFilters);
-
-            // Get total count
-            const total = await this.getCount('users', whereClause, params);
-
-            // Get paginated results with stats
-            const { clause: paginationClause, params: paginationParams } =
-                this.buildPaginationClause(page, pageSize, nextParamIndex);
-
-            const query = `
-        SELECT 
-          u.*,
-          COUNT(um.short_code) as total_urls,
-          COUNT(CASE WHEN NOT um.is_deleted THEN 1 END) as active_urls,
-          SUM(um.access_count) as total_clicks,
-          MAX(um.last_accessed_at) as last_url_accessed
-        FROM users u
-        LEFT JOIN url_mappings um ON u.user_id = um.user_id
-        ${whereClause}
-        GROUP BY u.user_id
-        ORDER BY u.created_at DESC
-        ${paginationClause}
-      `;
-
-            const result = await this.query(query, [...params, ...paginationParams]);
-
-            const data = result.rows.map((row: any) => ({
-                ...row,
-                total_urls: parseInt(row.total_urls, 10),
-                active_urls: parseInt(row.active_urls, 10),
-                total_clicks: parseInt(row.total_clicks || '0', 10),
-            })) as UserWithStats[];
-
-            return {
-                data,
-                pagination: this.calculatePagination(page, pageSize, total),
-            };
+            const result = await db.query(query, [token]);
+            return result.rows[0] || null;
         } catch (error) {
-            logger.error('Failed to find all users', {
-                filters,
-                error: error instanceof Error ? error.message : 'Unknown error',
-            });
-            throw this.handleDatabaseError(error);
+            logger.error('Error finding refresh token', { error });
+            throw error;
         }
     }
 
     /**
-     * Get users by rate limit tier
+     * Revoke refresh token
      */
-    async findByRateLimitTier(tier: 'standard' | 'premium' | 'enterprise'): Promise<User[]> {
-        try {
-            const query = `
-        SELECT * FROM users
-        WHERE rate_limit_tier = $1 AND is_active = TRUE
-        ORDER BY created_at DESC
-      `;
+    async revokeRefreshToken(token: string): Promise<void> {
+        const query = 'UPDATE refresh_tokens SET revoked = TRUE WHERE token = $1';
 
-            const result = await this.query(query, [tier]);
-            return result.rows as User[];
+        try {
+            await db.query(query, [token]);
         } catch (error) {
-            logger.error('Failed to find users by rate limit tier', {
-                tier,
-                error: error instanceof Error ? error.message : 'Unknown error',
-            });
-            throw this.handleDatabaseError(error);
+            logger.error('Error revoking refresh token', { error });
+            throw error;
         }
     }
 
     /**
-     * Get inactive users (for cleanup)
+     * Revoke all refresh tokens for user
      */
-    async findInactiveUsers(
-        inactiveDays: number = 365,
-        limit: number = 1000
-    ): Promise<User[]> {
-        try {
-            const query = `
-        SELECT * FROM users
-        WHERE is_active = TRUE
-          AND (
-            last_login_at < NOW() - INTERVAL '${inactiveDays} days'
-            OR (last_login_at IS NULL AND created_at < NOW() - INTERVAL '${inactiveDays} days')
-          )
-        ORDER BY COALESCE(last_login_at, created_at) ASC
-        LIMIT $1
-      `;
+    async revokeAllRefreshTokens(userId: number): Promise<void> {
+        const query = 'UPDATE refresh_tokens SET revoked = TRUE WHERE user_id = $1';
 
-            const result = await this.query(query, [limit]);
-            return result.rows as User[];
+        try {
+            await db.query(query, [userId]);
         } catch (error) {
-            logger.error('Failed to find inactive users', {
-                inactiveDays,
-                limit,
-                error: error instanceof Error ? error.message : 'Unknown error',
-            });
-            throw this.handleDatabaseError(error);
+            logger.error('Error revoking all refresh tokens', { error, userId });
+            throw error;
         }
     }
 
     /**
-     * Update user preferences
+     * Create password reset token
      */
-    async updatePreferences(
-        userId: number,
-        preferences: {
-            duplicate_strategy?: 'generate_new' | 'reuse_existing';
-            default_expiry_days?: number | null;
-        }
-    ): Promise<User | null> {
+    async createPasswordResetToken(userId: number, token: string, expiresAt: Date): Promise<void> {
+        const query = `
+      INSERT INTO password_reset_tokens (user_id, token, expires_at)
+      VALUES ($1, $2, $3)
+    `;
+
         try {
-            return await this.update(userId, preferences);
+            await db.query(query, [userId, token, expiresAt]);
         } catch (error) {
-            logger.error('Failed to update user preferences', {
-                userId,
-                preferences,
-                error: error instanceof Error ? error.message : 'Unknown error',
-            });
-            throw this.handleDatabaseError(error);
+            logger.error('Error creating password reset token', { error, userId });
+            throw error;
         }
     }
 
     /**
-     * Get allowed sort columns
+     * Find password reset token
      */
-    protected getAllowedSortColumns(): string[] {
-        return [
-            'created_at',
-            'updated_at',
-            'last_login_at',
-            'email',
-            'rate_limit_tier',
-            'user_id',
+    async findPasswordResetToken(token: string): Promise<PasswordResetToken | null> {
+        const query = `
+      SELECT id, user_id as "userId", token, expires_at as "expiresAt", 
+             used, created_at as "createdAt"
+      FROM password_reset_tokens 
+      WHERE token = $1
+    `;
+
+        try {
+            const result = await db.query(query, [token]);
+            return result.rows[0] || null;
+        } catch (error) {
+            logger.error('Error finding password reset token', { error });
+            throw error;
+        }
+    }
+
+    /**
+     * Mark password reset token as used
+     */
+    async markPasswordResetTokenUsed(token: string): Promise<void> {
+        const query = 'UPDATE password_reset_tokens SET used = TRUE WHERE token = $1';
+
+        try {
+            await db.query(query, [token]);
+        } catch (error) {
+            logger.error('Error marking password reset token as used', { error });
+            throw error;
+        }
+    }
+
+    /**
+     * Create email verification token
+     */
+    async createEmailVerificationToken(userId: string, token: string, expiresAt: Date): Promise<void> {
+        const query = `
+      INSERT INTO email_verification_tokens (user_id, token, expires_at)
+      VALUES ($1, $2, $3)
+    `;
+
+        try {
+            await db.query(query, [userId, token, expiresAt]);
+        } catch (error) {
+            logger.error('Error creating email verification token', { error, userId });
+            throw error;
+        }
+    }
+
+    /**
+     * Find email verification token
+     */
+    async findEmailVerificationToken(token: string): Promise<EmailVerificationToken | null> {
+        const query = `
+      SELECT id, user_id as "userId", token, expires_at as "expiresAt", 
+             used, created_at as "createdAt"
+      FROM email_verification_tokens 
+      WHERE token = $1
+    `;
+
+        try {
+            const result = await db.query(query, [token]);
+            return result.rows[0] || null;
+        } catch (error) {
+            logger.error('Error finding email verification token', { error });
+            throw error;
+        }
+    }
+
+    /**
+     * Mark email as verified
+     */
+    async markEmailVerified(userId: string): Promise<void> {
+        const query = 'UPDATE users SET email_verified = TRUE WHERE user_id = $1';
+
+        try {
+            await db.query(query, [userId]);
+        } catch (error) {
+            logger.error('Error marking email as verified', { error, userId });
+            throw error;
+        }
+    }
+
+    /**
+     * Clean up expired tokens
+     */
+    async cleanupExpiredTokens(): Promise<void> {
+        const queries = [
+            'DELETE FROM refresh_tokens WHERE expires_at < CURRENT_TIMESTAMP',
+            'DELETE FROM password_reset_tokens WHERE expires_at < CURRENT_TIMESTAMP',
+            'DELETE FROM email_verification_tokens WHERE expires_at < CURRENT_TIMESTAMP',
         ];
+
+        try {
+            for (const query of queries) {
+                await db.query(query);
+            }
+        } catch (error) {
+            logger.error('Error cleaning up expired tokens', { error });
+            throw error;
+        }
     }
 
     /**
-     * Get user activity summary
+     * Health check for repository
      */
-    async getUserActivitySummary(
-        userId: number,
-        days: number = 30
-    ): Promise<{
-        user: User;
-        urlsCreated: number;
-        totalClicks: number;
-        topUrls: Array<{ short_code: string; long_url: string; clicks: number }>;
-    } | null> {
+    async healthCheck(): Promise<boolean> {
         try {
-            const user = await this.findById(userId);
-            if (!user) {
-                return null;
-            }
-
-            // Get URLs created in the last N days
-            const urlsQuery = `
-        SELECT COUNT(*) as count
-        FROM url_mappings
-        WHERE user_id = $1 
-          AND created_at >= NOW() - INTERVAL '${days} days'
-          AND NOT is_deleted
-      `;
-            const urlsResult = await this.query(urlsQuery, [userId]);
-            const urlsCreated = parseInt(urlsResult.rows[0].count, 10);
-
-            // Get total clicks in the last N days
-            const clicksQuery = `
-        SELECT COALESCE(SUM(aa.click_count), 0) as total_clicks
-        FROM url_mappings um
-        JOIN analytics_aggregates aa ON um.short_code = aa.short_code
-        WHERE um.user_id = $1 
-          AND aa.date >= CURRENT_DATE - INTERVAL '${days} days'
-          AND NOT um.is_deleted
-      `;
-            const clicksResult = await this.query(clicksQuery, [userId]);
-            const totalClicks = parseInt(clicksResult.rows[0].total_clicks, 10);
-
-            // Get top 5 URLs by clicks
-            const topUrlsQuery = `
-        SELECT 
-          um.short_code,
-          um.long_url,
-          COALESCE(SUM(aa.click_count), 0) as clicks
-        FROM url_mappings um
-        LEFT JOIN analytics_aggregates aa ON um.short_code = aa.short_code
-          AND aa.date >= CURRENT_DATE - INTERVAL '${days} days'
-        WHERE um.user_id = $1 AND NOT um.is_deleted
-        GROUP BY um.short_code, um.long_url
-        ORDER BY clicks DESC
-        LIMIT 5
-      `;
-            const topUrlsResult = await this.query(topUrlsQuery, [userId]);
-            const topUrls = topUrlsResult.rows.map((row: any) => ({
-                short_code: row.short_code,
-                long_url: row.long_url,
-                clicks: parseInt(row.clicks, 10),
-            }));
-
-            return {
-                user,
-                urlsCreated,
-                totalClicks,
-                topUrls,
-            };
+            await db.query('SELECT 1');
+            return true;
         } catch (error) {
-            logger.error('Failed to get user activity summary', {
-                userId,
-                days,
+            logger.error('Repository health check failed', {
+                repository: this.constructor.name,
                 error: error instanceof Error ? error.message : 'Unknown error',
             });
-            throw this.handleDatabaseError(error);
+            return false;
         }
     }
 }
