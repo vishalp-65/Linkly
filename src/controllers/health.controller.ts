@@ -4,7 +4,6 @@ import { redis } from '../config/redis';
 import { kafka } from '../config/kafka';
 import { config } from '../config/environment';
 import { metricsService } from '../services/metricsService';
-import { ApiResponse } from '../utils/ApiResponse';
 import { logger } from '../config/logger';
 
 export class HealthController {
