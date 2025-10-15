@@ -4,7 +4,6 @@ import { api } from '../services/api';
 export const store = configureStore({
   reducer: {
     [api.reducerPath]: api.reducer,
-    // Other slices will be added here as they are created
   },
   middleware: (getDefaultMiddleware) =>
     getDefaultMiddleware().concat(api.middleware),
