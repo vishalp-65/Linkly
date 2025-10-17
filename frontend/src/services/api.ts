@@ -1,101 +1,296 @@
 import { createApi, fetchBaseQuery } from '@reduxjs/toolkit/query/react';
+import type { RootState } from '../store';
+import type {
+  AliasAvailabilityResponse,
+  ApiResponse,
+  AuthTokens,
+  PaginatedResponse,
+  URLItem,
+  URLListParams,
+  User
+} from '../types/url.types';
+import type { UserPermissions } from '../types/auth.types';
 
-// Define types for URL management
-export interface URLItem {
-  id: string;
-  shortCode: string;
-  shortUrl: string;
-  originalUrl: string;
-  customAlias?: string;
-  clickCount: number;
-  createdAt: string;
-  expiryDate?: string;
-  isExpired: boolean;
-  status: 'active' | 'expired';
-}
+// Base URL for API
+const API_BASE_URL = 'http://localhost:3000/api/v1';
 
-export interface URLListResponse {
-  urls: URLItem[];
-  total: number;
-  page: number;
-  limit: number;
-  totalPages: number;
-}
-
-export interface URLListParams {
-  page?: number;
-  limit?: number;
-  search?: string;
-  status?: 'all' | 'active' | 'expired';
-  sortBy?: 'date' | 'clicks' | 'alphabetical';
-  sortOrder?: 'asc' | 'desc';
-}
-
-// Define the base API
+// API Service
 export const api = createApi({
   reducerPath: 'api',
   baseQuery: fetchBaseQuery({
-    baseUrl: '/api/v1',
-  }),
-  tagTypes: ['URL', 'Analytics'],
-  endpoints: (builder) => ({
-    checkAliasAvailability: builder.query<
-      { available: boolean; suggestions?: string[] },
-      string
-    >({
-      query: (alias) => `/urls/check-alias/${encodeURIComponent(alias)}`,
-    }),
-    createShortUrl: builder.mutation<
-      {
-        shortUrl: string;
-        originalUrl: string;
-        customAlias?: string;
-        expiryDate?: string;
-        createdAt: string;
-      },
-      {
-        originalUrl: string;
-        customAlias?: string;
-        expiryDays?: number;
+    baseUrl: API_BASE_URL,
+    prepareHeaders: (headers, { getState }) => {
+      const token = (getState() as RootState).auth.tokens?.accessToken;
+      if (token) {
+        headers.set('Authorization', `Bearer ${token}`);
       }
+      return headers;
+    },
+  }),
+  tagTypes: ['Auth', 'URLs', 'Analytics', 'Permissions'],
+  endpoints: (builder) => ({
+    // Auth Endpoints
+    register: builder.mutation<
+      ApiResponse<{ user: User; tokens: AuthTokens }>,
+      { email: string; password: string; firstName?: string; lastName?: string }
+    >({
+      query: (credentials) => ({
+        url: '/auth/register',
+        method: 'POST',
+        body: credentials,
+      }),
+      invalidatesTags: ['Auth', 'Permissions'],
+    }),
+
+    login: builder.mutation<
+      ApiResponse<{ user: User; tokens: AuthTokens }>,
+      { email: string; password: string }
+    >({
+      query: (credentials) => ({
+        url: '/auth/login',
+        method: 'POST',
+        body: credentials,
+      }),
+      invalidatesTags: ['Auth', 'Permissions'],
+    }),
+
+    logout: builder.mutation<ApiResponse<void>, { refreshToken: string }>({
+      query: (body) => ({
+        url: '/auth/logout',
+        method: 'POST',
+        body,
+      }),
+      invalidatesTags: ['Auth', 'URLs', 'Analytics', 'Permissions'],
+    }),
+
+    refreshToken: builder.mutation<
+      ApiResponse<{ tokens: AuthTokens }>,
+      { refreshToken: string }
+    >({
+      query: (body) => ({
+        url: '/auth/refresh-token',
+        method: 'POST',
+        body,
+      }),
+    }),
+
+    getProfile: builder.query<ApiResponse<{ user: User }>, void>({
+      query: () => '/auth/profile',
+      providesTags: ['Auth'],
+    }),
+
+    updateProfile: builder.mutation<
+      ApiResponse<{ user: User }>,
+      Partial<Pick<User, 'firstName' | 'lastName' | 'avatarUrl'>>
     >({
       query: (data) => ({
-        url: '/urls',
+        url: '/auth/profile',
+        method: 'PUT',
+        body: data,
+      }),
+      invalidatesTags: ['Auth'],
+    }),
+
+    changePassword: builder.mutation<
+      ApiResponse<void>,
+      { currentPassword: string; newPassword: string }
+    >({
+      query: (data) => ({
+        url: '/auth/change-password',
         method: 'POST',
         body: data,
       }),
-      invalidatesTags: ['URL'],
     }),
-    getUserUrls: builder.query<URLListResponse, URLListParams>({
-      query: (params) => {
-        const searchParams = new URLSearchParams();
-        if (params.page) searchParams.append('page', params.page.toString());
-        if (params.limit) searchParams.append('limit', params.limit.toString());
-        if (params.search) searchParams.append('search', params.search);
-        if (params.status && params.status !== 'all') searchParams.append('status', params.status);
-        if (params.sortBy) searchParams.append('sortBy', params.sortBy);
-        if (params.sortOrder) searchParams.append('sortOrder', params.sortOrder);
 
-        return `/urls?${searchParams.toString()}`;
-      },
-      providesTags: ['URL'],
+    requestPasswordReset: builder.mutation<ApiResponse<void>, { email: string }>({
+      query: (data) => ({
+        url: '/auth/request-password-reset',
+        method: 'POST',
+        body: data,
+      }),
     }),
-    deleteUrl: builder.mutation<{ success: boolean }, string>({
+
+    confirmPasswordReset: builder.mutation<
+      ApiResponse<void>,
+      { token: string; newPassword: string }
+    >({
+      query: (data) => ({
+        url: '/auth/confirm-password-reset',
+        method: 'POST',
+        body: data,
+      }),
+    }),
+
+    getPermissions: builder.query<ApiResponse<{ permissions: UserPermissions }>, void>({
+      query: () => '/auth/permissions',
+      providesTags: ['Permissions'],
+    }),
+
+    // URL Endpoints
+    createShortUrl: builder.mutation<
+      ApiResponse<URLItem>,
+      { url: string; customAlias?: string; expiryDays?: number }
+    >({
+      query: (data) => ({
+        url: '/url/shorten',
+        method: 'POST',
+        body: data,
+      }),
+      invalidatesTags: ['URLs'],
+    }),
+
+    // getAllUrls: builder.query<
+    //   ApiResponse<URLItem[]>,
+    //   {
+    //     page?: number;
+    //     pageSize?: number;
+    //     sortBy?: string;
+    //     sortOrder?: 'asc' | 'desc';
+    //     search?: string;
+    //   }
+    // >({
+    //   query: (params) => ({
+    //     url: '/url/getAll',
+    //     params: {
+    //       page: params.page || 1,
+    //       pageSize: params.pageSize || 20,
+    //       sortBy: params.sortBy || 'created_at',
+    //       sortOrder: params.sortOrder || 'desc',
+    //       ...(params.search && { search: params.search }),
+    //     },
+    //   }),
+    //   providesTags: ['URLs'],
+    // }),
+
+    deleteUrl: builder.mutation<ApiResponse<void>, string>({
       query: (shortCode) => ({
-        url: `/urls/${shortCode}`,
+        url: `/url/${shortCode}`,
         method: 'DELETE',
       }),
-      invalidatesTags: ['URL'],
+      invalidatesTags: ['URLs'],
+    }),
+
+    resolveUrl: builder.query<
+      ApiResponse<{
+        shortCode: string;
+        longUrl: string;
+        accessCount: number;
+        expiresAt?: string;
+      }>,
+      string
+    >({
+      query: (shortCode) => `/url/resolve/${shortCode}`,
+    }),
+
+    checkAliasAvailability: builder.query<AliasAvailabilityResponse, string>({
+      query: (alias) => `/url/check-alias/${alias}`,
+    }),
+
+    getUserUrls: builder.query<
+      { data: ApiResponse<URLItem[]>, pagination: PaginatedResponse<URLItem> },
+      URLListParams
+    >({
+      query: (params) => ({
+        url: '/url/get-all',
+        params: {
+          page: params.page || 1,
+          pageSize: params.pageSize || 10,
+          ...(params.search && { search: params.search }),
+          ...(params.sortBy && { sortBy: params.sortBy }),
+          ...(params.sortOrder && { sortOrder: params.sortOrder }),
+          ...(params.isCustomAlias !== undefined && { isCustomAlias: params.isCustomAlias }),
+          ...(params.hasExpiry !== undefined && { hasExpiry: params.hasExpiry }),
+          ...(params.isExpired !== undefined && { isExpired: params.isExpired }),
+          ...(params.dateFrom && { dateFrom: params.dateFrom }),
+          ...(params.dateTo && { dateTo: params.dateTo }),
+          ...(params.minAccessCount !== undefined && { minAccessCount: params.minAccessCount }),
+          ...(params.maxAccessCount !== undefined && { maxAccessCount: params.maxAccessCount }),
+        },
+      }),
+      providesTags: ['URLs'],
+    }),
+
+    // Analytics Endpoints
+    getAnalytics: builder.query<
+      ApiResponse<{
+        shortCode: string;
+        totalClicks: number;
+        uniqueVisitors: number;
+        clicksByDate: Array<{ date: string; clicks: number }>;
+        clicksByCountry: Array<{ country: string; clicks: number }>;
+        clicksByDevice: Array<{ device: string; clicks: number }>;
+        clicksByReferrer: Array<{ referrer: string; clicks: number }>;
+      }>,
+      { shortCode: string; dateFrom?: string; dateTo?: string }
+    >({
+      query: ({ shortCode, dateFrom, dateTo }) => ({
+        url: `/analytics/${shortCode}`,
+        params: {
+          ...(dateFrom && { date_from: dateFrom }),
+          ...(dateTo && { date_to: dateTo }),
+        },
+      }),
+      providesTags: ['Analytics'],
+    }),
+
+    getRealtimeAnalytics: builder.query<
+      ApiResponse<{
+        activeUsers: number;
+        recentClicks: Array<{
+          timestamp: string;
+          country: string;
+          device: string;
+        }>;
+      }>,
+      string
+    >({
+      query: (shortCode) => `/analytics/${shortCode}/realtime`,
+    }),
+
+    getGlobalAnalytics: builder.query<
+      ApiResponse<{
+        totalUrls: number;
+        totalClicks: number;
+        activeUrls: number;
+        topUrls: Array<URLItem>;
+      }>,
+      { dateFrom?: string; dateTo?: string }
+    >({
+      query: (params) => ({
+        url: '/analytics/global/summary',
+        params: {
+          ...(params.dateFrom && { date_from: params.dateFrom }),
+          ...(params.dateTo && { date_to: params.dateTo }),
+        },
+      }),
+      providesTags: ['Analytics'],
     }),
   }),
 });
 
+// Export hooks for usage in components
 export const {
+  useRegisterMutation,
+  useLoginMutation,
+  useLogoutMutation,
+  useRefreshTokenMutation,
+  useGetProfileQuery,
+  useUpdateProfileMutation,
+  useChangePasswordMutation,
+  useRequestPasswordResetMutation,
+  useConfirmPasswordResetMutation,
+  useGetPermissionsQuery,
+  // URLs
+  useCreateShortUrlMutation,
   useCheckAliasAvailabilityQuery,
   useLazyCheckAliasAvailabilityQuery,
-  useCreateShortUrlMutation,
   useGetUserUrlsQuery,
-  useDeleteUrlMutation
+  // useGetAllUrlsQuery,
+  useDeleteUrlMutation,
+  useResolveUrlQuery,
+  // Analytics
+  useGetAnalyticsQuery,
+  useGetRealtimeAnalyticsQuery,
+  useGetGlobalAnalyticsQuery,
 } = api;
 
-export default api;
