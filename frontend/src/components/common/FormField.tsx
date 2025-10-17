@@ -1,70 +1,45 @@
 import React from 'react';
 
 export interface FormFieldProps {
-    children: React.ReactNode;
     label?: string;
-    error?: string;
+    description?: string;
     helperText?: string;
+    error?: string;
     required?: boolean;
+    children: React.ReactNode;
     className?: string;
-    id?: string;
 }
 
 const FormField: React.FC<FormFieldProps> = ({
-    children,
     label,
-    error,
+    description,
     helperText,
-    required = false,
+    error,
+    required,
+    children,
     className = '',
-    id,
 }) => {
-    const fieldId = id || `field-${Math.random().toString(36).substr(2, 9)}`;
-
     return (
-        <div className={`w-full ${className}`}>
+        <div className={`space-y-2 ${className}`}>
             {label && (
-                <label
-                    htmlFor={fieldId}
-                    className="block text-sm font-medium leading-6 text-gray-900 mb-2"
-                >
+                <label className="block text-sm font-medium text-gray-700">
                     {label}
                     {required && <span className="text-red-500 ml-1">*</span>}
                 </label>
             )}
 
-            <div className="relative">
-                {React.isValidElement(children)
-                    ? React.cloneElement(children, {
-                        id: fieldId,
-                        'aria-describedby': error
-                            ? `${fieldId}-error`
-                            : helperText
-                                ? `${fieldId}-description`
-                                : undefined,
-                        'aria-invalid': error ? 'true' : 'false',
-                    } as any)
-                    : children
-                }
-            </div>
+            {description && (
+                <p className="text-sm text-gray-600">{description}</p>
+            )}
+
+            {children}
 
             {error && (
-                <p
-                    className="mt-2 text-sm text-red-600"
-                    id={`${fieldId}-error`}
-                    role="alert"
-                >
-                    {error}
-                </p>
+                <p className="text-sm text-red-600">{error}</p>
             )}
 
             {helperText && !error && (
-                <p
-                    className="mt-2 text-sm text-gray-500"
-                    id={`${fieldId}-description`}
-                >
-                    {helperText}
-                </p>
+                <p className="text-sm text-gray-500">{helperText}</p>
             )}
         </div>
     );

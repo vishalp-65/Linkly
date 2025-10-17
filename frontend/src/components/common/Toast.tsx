@@ -16,7 +16,7 @@ const Toast: React.FC<ToastProps> = ({
     type = 'info',
     title,
     message,
-    duration = 5000,
+    duration = 3000,
     onClose,
     position = 'top-right'
 }) => {
@@ -105,9 +105,9 @@ const Toast: React.FC<ToastProps> = ({
 
     const toastContent = (
         <div
-            className={`fixed z-50 ${positionClasses[position]} transition-all duration-300 ease-in-out ${isVisible && !isLeaving
-                    ? 'opacity-100 translate-y-0'
-                    : 'opacity-0 translate-y-2'
+            className={`fixed z-50 w-auto ${positionClasses[position]} transition-all duration-300 ease-in-out ${isVisible && !isLeaving
+                ? 'opacity-100 translate-y-0'
+                : 'opacity-0 translate-y-2'
                 }`}
             role="alert"
             aria-live="polite"
@@ -118,7 +118,7 @@ const Toast: React.FC<ToastProps> = ({
                         <div className={`flex-shrink-0 ${config.iconColor}`}>
                             {config.icon}
                         </div>
-                        <div className="ml-3 w-0 flex-1">
+                        <div className="ml-3 flex-1">
                             {title && (
                                 <p className={`text-sm font-medium ${config.textColor}`}>
                                     {title}

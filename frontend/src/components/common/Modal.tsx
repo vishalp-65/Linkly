@@ -116,7 +116,7 @@ const Modal: React.FC<ModalProps> = ({
                 className="flex min-h-full items-end justify-center p-4 text-center sm:items-center sm:p-0"
                 onClick={handleOverlayClick}
             >
-                <div className="fixed inset-0 bg-gray-500 bg-opacity-75 transition-opacity" />
+                <div className="fixed inset-0 bg-black/50 backdrop-blur-lg transition-opacity" />
 
                 <div
                     ref={modalRef}
@@ -144,7 +144,7 @@ const Modal: React.FC<ModalProps> = ({
 
                     <button
                         type="button"
-                        className="absolute right-0 top-0 m-4 text-gray-400 hover:text-gray-600 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 rounded-md p-1"
+                        className="absolute right-0 top-0 m-4 text-gray-400 hover:text-gray-600 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 rounded-md p-1 cursor-pointer"
                         onClick={onClose}
                         aria-label="Close modal"
                     >
