@@ -13,6 +13,7 @@
     "lint:fix": "eslint src/**/*.ts --fix",
     "db:init": "ts-node src/database/init.ts init",
     "db:migrate": "ts-node src/database/init.ts migrate",
+    "db:migrate:users": "ts-node -e \"require('./src/database/init.ts').runMigration('./src/database/migrations/002_create_users_table.sql')\"",
     "db:status": "ts-node src/database/init.ts status",
     "db:create": "ts-node src/database/init.ts create",
     "kafka:init": "ts-node src/scripts/initKafka.ts",
