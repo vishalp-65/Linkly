@@ -1,170 +1,264 @@
-# URL Shortener
+# URL Shortener with Authentication
 
-A high-performance URL shortener service built with Node.js, TypeScript, Express, PostgreSQL, and Redis.
+A high-performance URL shortener service with comprehensive user authentication and role-based access control.
 
 ## Features
 
-- High-performance URL shortening and redirects
-- Scalable architecture with caching
-- Comprehensive logging and monitoring
-- Health checks and metrics
-- Rate limiting and security
-- Analytics tracking
-- URL expiration management
+### Authentication & Authorization
+- **User Registration & Login** - Email/password authentication
+- **JWT-based Authentication** - Secure access and refresh tokens
+- **Password Reset** - Secure password reset flow
+- **Role-based Access Control** - Guest vs Registered user permissions
+- **Google OAuth** - Ready for Google Sign-In integration
 
-## Prerequisites
+### URL Shortening
+- **Guest Users**: 
+  - Can create short URLs with 7-day expiry limit
+  - Limited to 10 URLs per day
+  - No custom aliases or analytics access
+- **Registered Users**:
+  - Unlimited URL creation with custom expiry (up to 1 year)
+  - Custom aliases support
+  - Full analytics access
+  - URL duplication handling
+  - Up to 100 URLs per day
 
-- Node.js 18+ 
-- PostgreSQL 13+
+### Analytics & Monitoring
+- Real-time click tracking
+- Geographic analytics
+- Device and browser analytics
+- Performance monitoring with OpenTelemetry
+- Comprehensive logging
+
+## Tech Stack
+
+### Backend
+- **Node.js** with TypeScript
+- **Express.js** - Web framework
+- **PostgreSQL** - Primary database
+- **Redis** - Caching and session storage
+- **JWT** - Authentication tokens
+- **bcrypt** - Password hashing
+- **Joi** - Input validation
+- **Winston** - Logging
+- **Kafka** - Analytics event streaming (optional)
+
+### Frontend
+- **React 19** with TypeScript
+- **Redux Toolkit** - State management
+- **React Router** - Navigation
+- **Tailwind CSS** - Styling
+- **Vite** - Build tool
+
+## Quick Start
+
+### Prerequisites
+- Node.js 18+
+- PostgreSQL 12+
 - Redis 6+
 - npm or yarn
 
-## Installation
+### Backend Setup
 
-1. Clone the repository:
-```bash
-git clone <repository-url>
-cd url-shortener
-```
+1. **Clone and install dependencies**
+   ```bash
+   git clone <repository-url>
+   cd url-shortener
+   npm install
+   ```
 
-2. Install dependencies:
-```bash
-npm install
-```
+2. **Environment Configuration**
+   ```bash
+   cp .env.example .env
+   # Edit .env with your database and Redis credentials
+   ```
 
-3. Copy environment configuration:
-```bash
-cp .env.example .env
-```
+3. **Database Setup**
+   ```bash
+   # Create database
+   createdb url_shortener
+   
+   # Run migrations
+   npm run db:migrate
+   ```
 
-4. Update the `.env` file with your configuration values.
+4. **Start the backend**
+   ```bash
+   npm run dev
+   ```
+   Backend will be available at `http://localhost:3000`
 
-5. Set up the database:
-```bash
-# Create database
-createdb url_shortener
+### Frontend Setup
 
-# Run migrations (will be added in future tasks)
-npm run migrate
-```
+1. **Install frontend dependencies**
+   ```bash
+   cd frontend
+   npm install
+   ```
 
-6. Start Redis server:
-```bash
-redis-server
-```
+2. **Environment Configuration**
+   ```bash
+   cd frontend
+   cp .env.example .env
+   # Edit .env to set the backend URL if different from default
+   ```
 
-## Development
-
-Start the development server:
-```bash
-npm run dev
-```
-
-The server will start on `http://localhost:3000` by default.
-
-## Production
-
-Build and start the production server:
-```bash
-npm run build
-npm start
-```
-
-## Testing
-
-Run tests:
-```bash
-npm test
-```
-
-Run tests in watch mode:
-```bash
-npm run test:watch
-```
-
-## Scripts
-
-- `npm run build` - Build the TypeScript code
-- `npm start` - Start the production server
-- `npm run dev` - Start the development server with hot reload
-- `npm test` - Run tests
-- `npm run test:watch` - Run tests in watch mode
-- `npm run lint` - Run ESLint
-- `npm run lint:fix` - Run ESLint with auto-fix
+3. **Start the frontend**
+   ```bash
+   npm run dev
+   ```
+   Frontend will be available at `http://localhost:5173`
 
 ## API Endpoints
 
-### Health Checks
+### Authentication
+- `POST /api/v1/auth/register` - User registration
+- `POST /api/v1/auth/login` - User login
+- `POST /api/v1/auth/logout` - User logout
+- `POST /api/v1/auth/refresh-token` - Refresh access token
+- `POST /api/v1/auth/request-password-reset` - Request password reset
+- `POST /api/v1/auth/confirm-password-reset` - Confirm password reset
+- `GET /api/v1/auth/profile` - Get user profile
+- `PUT /api/v1/auth/profile` - Update user profile
+- `POST /api/v1/auth/change-password` - Change password
+- `GET /api/v1/auth/permissions` - Get user permissions
 
-- `GET /health` - Comprehensive health check
-- `GET /ready` - Readiness check (for Kubernetes)
-- `GET /live` - Liveness check (for Kubernetes)
-- `GET /health/database` - Database-specific health check
-- `GET /health/cache` - Redis cache health check
+### URL Management
+- `POST /api/v1/url/shorten` - Create short URL (guest/authenticated)
+- `DELETE /api/v1/url/:shortCode` - Delete URL (authenticated only)
+- `GET /api/v1/url/resolve/:shortCode` - Resolve URL details
 
-### URL Operations (Coming in future tasks)
+### Analytics
+- `GET /api/v1/analytics/:shortCode` - Get URL analytics (authenticated only)
+- `GET /api/v1/analytics/:shortCode/realtime` - Real-time analytics
+- `GET /api/v1/analytics/global/summary` - Global analytics summary
 
-- `POST /api/v1/shorten` - Create short URL
-- `GET /{shortCode}` - Redirect to long URL
-- `DELETE /api/v1/url/{shortCode}` - Delete short URL
-- `GET /api/v1/analytics/{shortCode}` - Get analytics
+### Redirects
+- `GET /:shortCode` - Redirect to original URL
 
-## Configuration
+## User Permissions
 
-The application uses environment variables for configuration. See `.env.example` for all available options.
+### Guest Users
+- ✅ Create short URLs (7-day expiry max)
+- ✅ Access shortened URLs
+- ❌ Custom aliases
+- ❌ Analytics access
+- ❌ Custom expiry dates
+- ❌ URL management
+- **Limits**: 10 URLs per day, 7-day max expiry
 
-### Key Configuration Options
+### Registered Users
+- ✅ All guest features
+- ✅ Custom aliases
+- ✅ Full analytics access
+- ✅ Custom expiry dates (up to 1 year)
+- ✅ URL management (edit, delete)
+- ✅ Duplicate URL handling
+- **Limits**: 100 URLs per day, 365-day max expiry
 
-- `NODE_ENV` - Environment (development, production, test)
-- `PORT` - Server port (default: 3000)
-- `DB_*` - Database configuration
-- `REDIS_*` - Redis configuration
-- `LOG_LEVEL` - Logging level (error, warn, info, debug)
+## Database Schema
 
-## Architecture
+### Core Tables
+- `users` - User accounts and authentication
+- `url_mappings` - URL mappings and metadata
+- `analytics_events` - Click tracking events (partitioned)
+- `analytics_aggregates` - Pre-computed analytics
+- `refresh_tokens` - JWT refresh tokens
+- `password_reset_tokens` - Password reset tokens
+- `email_verification_tokens` - Email verification tokens
 
-The application follows a modular architecture with:
+## Security Features
 
-- **Express.js** - Web framework
-- **TypeScript** - Type safety
-- **PostgreSQL** - Primary database with connection pooling
-- **Redis** - Caching layer with cluster support
-- **Winston** - Structured JSON logging
-- **Helmet** - Security middleware
-- **Jest** - Testing framework
+- **Password Security**: bcrypt hashing with configurable rounds
+- **JWT Security**: Separate access and refresh tokens
+- **Rate Limiting**: Per-user and global rate limits
+- **Input Validation**: Comprehensive request validation
+- **SQL Injection Protection**: Parameterized queries
+- **CORS Configuration**: Configurable cross-origin policies
+- **Helmet.js**: Security headers
+- **Environment Validation**: Strict environment variable validation
 
-## Logging
+## Development
 
-The application uses structured JSON logging with Winston. Logs include:
+### Available Scripts
 
-- Request/response logging
-- Database operations
-- Cache operations
-- Business events
-- Security events
-- Performance metrics
-- Error tracking
+**Backend:**
+- `npm run dev` - Start development server
+- `npm run build` - Build for production
+- `npm run start` - Start production server
+- `npm run test` - Run tests
+- `npm run db:migrate` - Run database migrations
+- `npm run db:status` - Check migration status
 
-## Monitoring
+**Frontend:**
+- `npm run dev` - Start development server
+- `npm run build` - Build for production
+- `npm run preview` - Preview production build
+- `npm run test` - Run tests
+- `npm run lint` - Run linting
 
-Health check endpoints provide:
+### Environment Variables
 
-- Service status (healthy/unhealthy)
-- Database connectivity
-- Redis connectivity
-- System metrics (memory, CPU)
-- Response times
+**Backend** (see `.env.example` for complete list):
 
-## Security
+```env
+# Database
+DB_HOST=localhost
+DB_PORT=5432
+DB_NAME=url_shortener
+DB_USER=postgres
+DB_PASSWORD=your_password
 
-Security features include:
+# Security
+JWT_SECRET=your-jwt-secret-32-chars-min
+JWT_REFRESH_SECRET=your-refresh-secret-32-chars-min
 
-- Helmet.js for security headers
-- CORS configuration
-- Input validation
-- Rate limiting (coming in future tasks)
-- API key authentication (coming in future tasks)
+# Redis
+REDIS_HOST=localhost
+REDIS_PORT=6379
+```
+
+**Frontend** (see `frontend/.env.example`):
+
+```env
+# Backend API URL
+VITE_BASE_URL=http://localhost:3000
+```
+
+## Production Deployment
+
+1. **Environment Setup**
+   - Use strong, unique secrets for JWT tokens
+   - Configure proper CORS origins
+   - Set up SSL/TLS certificates
+   - Configure rate limiting appropriately
+
+2. **Database**
+   - Use connection pooling
+   - Set up read replicas for analytics
+   - Configure automated backups
+   - Monitor performance
+
+3. **Caching**
+   - Configure Redis clustering for high availability
+   - Set appropriate cache TTLs
+   - Monitor cache hit rates
+
+4. **Monitoring**
+   - Set up application monitoring (Jaeger/Zipkin)
+   - Configure log aggregation
+   - Set up health checks
+   - Monitor key metrics
+
+## Contributing
+
+1. Fork the repository
+2. Create a feature branch
+3. Make your changes
+4. Add tests for new functionality
+5. Ensure all tests pass
+6. Submit a pull request
 
 ## License
 
-MIT
+MIT License - see LICENSE file for details
