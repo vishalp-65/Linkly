@@ -1,5 +1,4 @@
 import React, { useState, useEffect, useCallback } from 'react';
-import { useLazyCheckAliasAvailabilityQuery } from '../services/api';
 import Input from './common/Input';
 
 export interface AliasAvailabilityCheckerProps {
@@ -15,21 +14,11 @@ const AliasAvailabilityChecker: React.FC<AliasAvailabilityCheckerProps> = ({
     disabled = false,
     onAvailabilityChange
 }) => {
-    const [checkAlias, { data, isLoading, error }] = useLazyCheckAliasAvailabilityQuery();
-    const [debouncedValue, setDebouncedValue] = useState(value);
     const [validationError, setValidationError] = useState('');
-
-    // Debounce the input value
-    useEffect(() => {
-        const timeoutId = setTimeout(() => {
-            setDebouncedValue(value);
-        }, 500);
-
-        return () => clearTimeout(timeoutId);
-    }, [value]);
+    const [isValidating, setIsValidating] = useState(false);
 
     // Validate alias format
-    const validateAlias = useCallback((alias: string) => {
+    const validateAlias = useCallback((alias: string): boolean => {
         if (!alias) {
             setValidationError('');
             return true;
@@ -38,13 +27,13 @@ const AliasAvailabilityChecker: React.FC<AliasAvailabilityCheckerProps> = ({
         // Check for valid characters (alphanumeric, hyphens, underscores)
         const validPattern = /^[a-zA-Z0-9_-]+$/;
         if (!validPattern.test(alias)) {
-            setValidationError('Alias can only contain letters, numbers, hyphens, and underscores');
+            setValidationError('Only letters, numbers, hyphens, and underscores allowed');
             return false;
         }
 
         // Check minimum length
         if (alias.length < 3) {
-            setValidationError('Alias must be at least 3 characters long');
+            setValidationError('Alias must be at least 3 characters');
             return false;
         }
 
@@ -55,9 +44,14 @@ const AliasAvailabilityChecker: React.FC<AliasAvailabilityCheckerProps> = ({
         }
 
         // Check for reserved words
-        const reservedWords = ['api', 'admin', 'www', 'app', 'help', 'support', 'about', 'contact'];
+        const reservedWords = [
+            'api', 'admin', 'www', 'app', 'help', 'support', 'about', 'contact',
+            'url', 'shorten', 'analytics', 'dashboard', 'login', 'register',
+            'logout', 'profile', 'settings', 'terms', 'privacy', 'docs', 'redirect',
+            'getall', 'resolve', 'stats', 'health'
+        ];
         if (reservedWords.includes(alias.toLowerCase())) {
-            setValidationError('This alias is reserved and cannot be used');
+            setValidationError('This alias is reserved');
             return false;
         }
 
@@ -65,48 +59,41 @@ const AliasAvailabilityChecker: React.FC<AliasAvailabilityCheckerProps> = ({
         return true;
     }, []);
 
-    // Check availability when debounced value changes
+    // Validate on value change
     useEffect(() => {
-        if (debouncedValue && validateAlias(debouncedValue)) {
-            checkAlias(debouncedValue);
-        }
-    }, [debouncedValue, checkAlias, validateAlias]);
+        const isValid = validateAlias(value);
 
-    // Notify parent about availability changes
-    useEffect(() => {
         if (onAvailabilityChange) {
-            const isAvailable = !validationError &&
-                (!debouncedValue || (data?.available === true));
-            onAvailabilityChange(isAvailable);
+            // We can't check server-side availability here since the endpoint
+            // only returns availability on actual URL creation attempt
+            // So we only report client-side validation
+            onAvailabilityChange(isValid);
         }
-    }, [data?.available, validationError, debouncedValue, onAvailabilityChange]);
+    }, [value, validateAlias, onAvailabilityChange]);
 
-    const getInputVariant = () => {
-        if (validationError) return 'error';
-        if (!debouncedValue) return 'default';
-        if (isLoading) return 'default';
-        if (data?.available === true) return 'success';
-        if (data?.available === false) return 'error';
-        return 'default';
-    };
-
-    const getHelperText = () => {
+    const getHelperText = (): string => {
         if (validationError) return validationError;
-        if (!debouncedValue) return 'Enter a custom alias for your short URL';
-        if (isLoading) return 'Checking availability...';
-        if (data?.available === true) return '✓ This alias is available';
-        if (data?.available === false) {
-            const suggestions = data.suggestions?.slice(0, 3).join(', ');
-            return `This alias is already taken${suggestions ? `. Try: ${suggestions}` : ''}`;
+        if (!value) return 'Enter a custom alias (3-50 characters)';
+
+        // Since we can't check availability in real-time,
+        // we just indicate that the format is valid
+        if (value.length >= 3) {
+            return '✓ Format is valid - availability will be checked on submission';
         }
-        if (error) return 'Unable to check availability. Please try again.';
+
         return '';
     };
 
+    const getHelperTextColor = (): string => {
+        if (validationError) return 'text-red-600';
+        if (value.length >= 3 && !validationError) return 'text-green-600';
+        return 'text-gray-500';
+    };
+
     const getRightIcon = () => {
-        if (isLoading) {
+        if (isValidating) {
             return (
-                <svg className="animate-spin h-5 w-5 text-gray-400" fill="none" viewBox="0 0 24 24">
+                <svg className="animate-spin h-5 w-5 text-blue-500" fill="none" viewBox="0 0 24 24">
                     <circle
                         className="opacity-25"
                         cx="12"
@@ -124,29 +111,25 @@ const AliasAvailabilityChecker: React.FC<AliasAvailabilityCheckerProps> = ({
             );
         }
 
-        if (debouncedValue && !validationError) {
-            if (data?.available === true) {
+        if (value && !validationError) {
+            if (value.length >= 3) {
                 return (
                     <svg className="h-5 w-5 text-green-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
-                    </svg>
-                );
-            }
-
-            if (data?.available === false) {
-                return (
-                    <svg className="h-5 w-5 text-red-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
                     </svg>
                 );
             }
         }
 
-        return null;
-    };
+        if (validationError) {
+            return (
+                <svg className="h-5 w-5 text-red-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                </svg>
+            );
+        }
 
-    const handleSuggestionClick = (suggestion: string) => {
-        onChange(suggestion);
+        return null;
     };
 
     return (
@@ -154,31 +137,38 @@ const AliasAvailabilityChecker: React.FC<AliasAvailabilityCheckerProps> = ({
             <Input
                 type="text"
                 value={value}
-                onChange={(e) => onChange(e.target.value)}
-                placeholder="my-custom-link"
-                variant={getInputVariant()}
+                onChange={(e) => {
+                    // Convert to lowercase and remove invalid characters in real-time
+                    const cleaned = e.target.value.toLowerCase().replace(/[^a-z0-9_-]/g, '');
+                    onChange(cleaned);
+                }}
+                placeholder="my-custom-alias"
                 helperText={getHelperText()}
+                className={getHelperTextColor()}
                 disabled={disabled}
                 rightIcon={getRightIcon()}
+                leftIcon={
+                    <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M7 7h.01M7 3h5c.512 0 1.024.195 1.414.586l7 7a2 2 0 010 2.828l-7 7a2 2 0 01-2.828 0l-7-7A1.994 1.994 0 013 12V7a4 4 0 014-4z" />
+                    </svg>
+                }
             />
 
-            {/* Suggestions */}
-            {data?.available === false && data.suggestions && data.suggestions.length > 0 && (
-                <div className="space-y-2">
-                    <p className="text-sm font-medium text-gray-700">Suggested alternatives:</p>
-                    <div className="flex flex-wrap gap-2">
-                        {data.suggestions.slice(0, 5).map((suggestion) => (
-                            <button
-                                key={suggestion}
-                                type="button"
-                                onClick={() => handleSuggestionClick(suggestion)}
-                                className="px-3 py-1 text-sm bg-blue-50 text-blue-700 rounded-md hover:bg-blue-100 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-1 transition-colors"
-                                disabled={disabled}
-                            >
-                                {suggestion}
-                            </button>
-                        ))}
-                    </div>
+            {/* Tips */}
+            {!value && (
+                <div className="text-xs text-gray-500 space-y-1">
+                    <p className="flex items-center">
+                        <svg className="w-4 h-4 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                        </svg>
+                        Tips for choosing an alias:
+                    </p>
+                    <ul className="list-disc list-inside ml-5 space-y-0.5">
+                        <li>Use 3-50 characters</li>
+                        <li>Only letters, numbers, hyphens, and underscores</li>
+                        <li>Make it memorable and relevant to your content</li>
+                        <li>Avoid reserved words like "api", "admin", "www"</li>
+                    </ul>
                 </div>
             )}
         </div>
