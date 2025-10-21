@@ -109,7 +109,7 @@ const Navbar: React.FC = () => {
                                             <Link
                                                 key={link.path}
                                                 to={link.path}
-                                                className={`relative flex items-center px-4 py-2 text-sm font-medium transition-colors duration-200 ${isActiveRoute(link.path)
+                                                className={`relative flex text-nowrap items-center px-4 py-2 text-sm font-medium transition-colors duration-200 ${isActiveRoute(link.path)
                                                     ? 'text-blue-600 after:content-[""] after:absolute after:bottom-0 after:left-1/2 after:-translate-x-1/2 after:border-b-2 after:border-blue-600 after:transition-all after:duration-300 after:w-[70%]'
                                                     : 'text-gray-600 hover:text-gray-900 after:content-[""] after:absolute after:bottom-0 after:left-1/2 after:-translate-x-1/2 after:border-b after:border-gray-300 after:transition-all after:duration-300 after:w-0 hover:after:w-[70%]'
                                                     }`}
