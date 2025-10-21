@@ -1,8 +1,10 @@
 import React, { useState } from 'react';
 import { useDeleteUrlMutation } from '../services/api';
 import Button from './common/Button';
+import Modal from './common/Modal'; // ✅ import your reusable modal
 import type { URLMapping } from '../types/url.types';
 import { useToast } from '../contexts/ToastContext';
+import { API_REDIRECT_BASE_URL } from '../utils/constant';
 
 interface URLCardProps {
     url: URLMapping;
@@ -21,7 +23,7 @@ const URLCard: React.FC<URLCardProps> = ({
     const [deleteUrl, { isLoading: isDeleting }] = useDeleteUrlMutation();
     const { showToast } = useToast();
 
-    const shortUrl = `${window.location.origin}/${url.short_code}`;
+    const shortUrl = `${API_REDIRECT_BASE_URL}/${url.short_code}`;
 
     const handleCopy = async () => {
         try {
@@ -125,7 +127,7 @@ const URLCard: React.FC<URLCardProps> = ({
                             {url.access_count} {url.access_count === 1 ? 'click' : 'clicks'}
                         </span>
 
-                        {url.total_clicks !== undefined && url.total_clicks > 0 && (
+                        {url.unique_visitors !== undefined && (
                             <span className="flex items-center gap-1">
                                 <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z" />
@@ -211,52 +213,48 @@ const URLCard: React.FC<URLCardProps> = ({
                 </div>
             </div>
 
-            {/* Delete Confirmation Modal */}
-            {showDeleteConfirm && (
-                <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
-                    <div className="bg-white rounded-lg shadow-xl max-w-md w-full p-6 animate-scale-up">
-                        <div className="flex items-center gap-3 mb-4">
-                            <div className="shrink-0 w-10 h-10 rounded-full bg-red-100 flex items-center justify-center">
-                                <svg className="w-6 h-6 text-red-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
-                                </svg>
-                            </div>
-                            <div>
-                                <h3 className="text-lg font-semibold text-gray-900">Delete URL</h3>
-                                <p className="text-sm text-gray-600">This action cannot be undone</p>
-                            </div>
-                        </div>
-
-                        <div className="bg-gray-50 rounded-lg p-3 mb-4">
-                            <p className="text-sm text-gray-700 break-all">
-                                <strong>Short URL:</strong> {shortUrl}
-                            </p>
-                        </div>
-
-                        <p className="text-sm text-gray-600 mb-6">
-                            Are you sure you want to delete this URL? All analytics data will also be removed.
-                        </p>
-
-                        <div className="flex justify-end gap-3">
-                            <Button
-                                variant="secondary"
-                                onClick={() => setShowDeleteConfirm(false)}
-                                disabled={isDeleting}
-                            >
-                                Cancel
-                            </Button>
-                            <Button
-                                variant="primary"
-                                onClick={handleDelete}
-                                loading={isDeleting}
-                                className="bg-red-600 hover:bg-red-700"
-                            >
-                                {isDeleting ? 'Deleting...' : 'Delete URL'}
-                            </Button>
-                        </div>
+            {/* Delete Modal */}
+            <Modal
+                isOpen={showDeleteConfirm}
+                onClose={() => setShowDeleteConfirm(false)}
+                title="Delete URL"
+                size="md"
+            >
+                <div className="flex items-center gap-5 mb-4">
+                    <div className="shrink-0 w-12 h-12 rounded-full bg-red-100 flex items-center justify-center">
+                        <svg className="w-6 h-6 text-red-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
+                        </svg>
                     </div>
+                    <p className="text-gray-700 text-sm">
+                        Are you sure you want to delete this URL? All analytics data will also be removed.
+                    </p>
                 </div>
-            )}
+
+                <div className="bg-gray-50 rounded-lg p-3 mb-4">
+                    <p className="text-sm text-gray-700 break-all">
+                        <strong>Short URL:</strong> {shortUrl}
+                    </p>
+                </div>
+
+                <div className="flex justify-end gap-3 mt-4">
+                    <Button
+                        variant="secondary"
+                        onClick={() => setShowDeleteConfirm(false)}
+                        disabled={isDeleting}
+                    >
+                        Cancel
+                    </Button>
+                    <Button
+                        variant="primary"
+                        onClick={handleDelete}
+                        loading={isDeleting}
+                        className="bg-red-600 hover:bg-red-700"
+                    >
+                        {isDeleting ? 'Deleting...' : 'Delete URL'}
+                    </Button>
+                </div>
+            </Modal>
         </div>
     );
 };

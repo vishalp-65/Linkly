@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/no-explicit-any */
 import React, { useState, useEffect, useCallback } from 'react';
 import { useGetUserUrlsQuery } from '../services/api';
 import Button from './common/Button';
@@ -5,6 +6,7 @@ import Input from './common/Input';
 import URLCard from './URLCard';
 import type { URLListParams, URLMapping } from '../types/url.types';
 import { debounce } from '../utils/debounce';
+import { Select } from './common';
 
 interface URLListProps {
     onUrlSelect?: (url: URLMapping) => void;
@@ -16,14 +18,14 @@ interface URLListProps {
 const URLList: React.FC<URLListProps> = ({
     onAnalyticsClick,
     onEditClick,
-    onShareClick
+    onShareClick,
 }) => {
     const [params, setParams] = useState<URLListParams>({
         page: 1,
         pageSize: 10,
         search: '',
         sortBy: 'created_at',
-        sortOrder: 'desc'
+        sortOrder: 'desc',
     });
 
     const [searchInput, setSearchInput] = useState('');
@@ -65,7 +67,7 @@ const URLList: React.FC<URLListProps> = ({
             pageSize: 10,
             search: '',
             sortBy: 'created_at',
-            sortOrder: 'desc'
+            sortOrder: 'desc',
         });
     };
 
@@ -83,11 +85,23 @@ const URLList: React.FC<URLListProps> = ({
     if (error) {
         return (
             <div className="bg-red-50 border border-red-200 rounded-lg p-6 text-center">
-                <svg className="w-12 h-12 text-red-500 mx-auto mb-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                <svg
+                    className="w-12 h-12 text-red-500 mx-auto mb-4"
+                    fill="none"
+                    stroke="currentColor"
+                    viewBox="0 0 24 24"
+                >
+                    <path
+                        strokeLinecap="round"
+                        strokeLinejoin="round"
+                        strokeWidth={2}
+                        d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"
+                    />
                 </svg>
                 <p className="text-red-600 font-medium">Failed to load URLs</p>
-                <p className="text-red-500 text-sm mt-1">{(error as any)?.data?.message || 'Please try again later'}</p>
+                <p className="text-red-500 text-sm mt-1">
+                    {(error as any)?.data?.message || 'Please try again later'}
+                </p>
                 <Button
                     variant="secondary"
                     size="sm"
@@ -100,15 +114,25 @@ const URLList: React.FC<URLListProps> = ({
         );
     }
 
-    const urlData = data?.data?.data;
-    const paginationMeta = data?.pagination?.pagination;
+    const urlData = (data?.data as any)?.data;
+    const paginationMeta = (data?.data as any)?.pagination;
     const isEmpty = !urlData || urlData.length === 0;
 
     if (isEmpty) {
         return (
             <div className="text-center py-12 bg-gray-50 rounded-lg border-2 border-dashed border-gray-300">
-                <svg className="w-16 h-16 text-gray-400 mx-auto mb-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13.828 10.172a4 4 0 00-5.656 0l-4 4a4 4 0 105.656 5.656l1.102-1.101m-.758-4.899a4 4 0 005.656 0l4-4a4 4 0 00-5.656-5.656l-1.1 1.1" />
+                <svg
+                    className="w-16 h-16 text-gray-400 mx-auto mb-4"
+                    fill="none"
+                    stroke="currentColor"
+                    viewBox="0 0 24 24"
+                >
+                    <path
+                        strokeLinecap="round"
+                        strokeLinejoin="round"
+                        strokeWidth={2}
+                        d="M13.828 10.172a4 4 0 00-5.656 0l-4 4a4 4 0 105.656 5.656l1.102-1.101m-.758-4.899a4 4 0 005.656 0l4-4a4 4 0 00-5.656-5.656l-1.1 1.1"
+                    />
                 </svg>
                 <h3 className="text-lg font-medium text-gray-900 mb-2">
                     {hasActiveFilters ? 'No URLs match your filters' : 'No URLs yet'}
@@ -119,11 +143,7 @@ const URLList: React.FC<URLListProps> = ({
                         : 'Create your first short URL to get started!'}
                 </p>
                 {hasActiveFilters && (
-                    <Button
-                        variant="secondary"
-                        size="sm"
-                        onClick={clearFilters}
-                    >
+                    <Button variant="secondary" size="sm" onClick={clearFilters}>
                         Clear Filters
                     </Button>
                 )}
@@ -143,72 +163,95 @@ const URLList: React.FC<URLListProps> = ({
                             value={searchInput}
                             onChange={(e) => handleSearchChange(e.target.value)}
                             leftIcon={
-                                <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
+                                <svg
+                                    className="w-5 h-5"
+                                    fill="none"
+                                    stroke="currentColor"
+                                    viewBox="0 0 24 24"
+                                >
+                                    <path
+                                        strokeLinecap="round"
+                                        strokeLinejoin="round"
+                                        strokeWidth={2}
+                                        d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"
+                                    />
                                 </svg>
-                            }
-                            rightIcon={
-                                searchInput && (
-                                    <button
-                                        onClick={() => handleSearchChange('')}
-                                        className="text-gray-400 hover:text-gray-600 transition-colors"
-                                    >
-                                        <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
-                                        </svg>
-                                    </button>
-                                )
                             }
                         />
                     </div>
 
                     {/* Filter Controls */}
-                    <div className="flex flex-col sm:flex-row gap-2">
-                        {/* Custom Alias Filter */}
-                        <select
-                            value={params.isCustomAlias === undefined ? 'all' : params.isCustomAlias.toString()}
-                            onChange={(e) => handleFilterChange('isCustomAlias', e.target.value === 'all' ? undefined : e.target.value === 'true')}
-                            className="rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 text-sm"
-                        >
-                            <option value="all">All Types</option>
-                            <option value="true">Custom Alias</option>
-                            <option value="false">Generated</option>
-                        </select>
+                    <div className="flex flex-col sm:flex-row gap-2 sm:items-center">
+                        {/* ✅ Custom Alias Filter */}
+                        <div className="min-w-[160px]">
+                            <Select
+                                options={[
+                                    { value: 'all', label: 'All Types' },
+                                    { value: 'true', label: 'Custom Alias' },
+                                    { value: 'false', label: 'Generated' },
+                                ]}
+                                value={
+                                    params.isCustomAlias === undefined
+                                        ? 'all'
+                                        : params.isCustomAlias.toString()
+                                }
+                                onChange={(val) =>
+                                    handleFilterChange(
+                                        'isCustomAlias',
+                                        val === 'all' ? undefined : val === 'true'
+                                    )
+                                }
+                            />
+                        </div>
 
-                        {/* Expiry Filter */}
-                        <select
-                            value={params.isExpired === undefined ? 'all' : params.isExpired.toString()}
-                            onChange={(e) => handleFilterChange('isExpired', e.target.value === 'all' ? undefined : e.target.value === 'true')}
-                            className="rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 text-sm"
-                        >
-                            <option value="all">All Status</option>
-                            <option value="false">Active</option>
-                            <option value="true">Expired</option>
-                        </select>
+                        {/* ✅ Expiry Filter */}
+                        <div className="min-w-[160px]">
+                            <Select
+                                options={[
+                                    { value: 'all', label: 'All Status' },
+                                    { value: 'false', label: 'Active' },
+                                    { value: 'true', label: 'Expired' },
+                                ]}
+                                value={
+                                    params.isExpired === undefined
+                                        ? 'all'
+                                        : params.isExpired.toString()
+                                }
+                                onChange={(val) =>
+                                    handleFilterChange(
+                                        'isExpired',
+                                        val === 'all' ? undefined : val === 'true'
+                                    )
+                                }
+                            />
+                        </div>
 
-                        {/* Sort Options */}
-                        <select
-                            value={`${params.sortBy}-${params.sortOrder}`}
-                            onChange={(e) => {
-                                const [sortBy, sortOrder] = e.target.value.split('-');
-                                setParams((prev) => ({
-                                    ...prev,
-                                    sortBy: sortBy as any,
-                                    sortOrder: sortOrder as any,
-                                    page: 1
-                                }));
-                            }}
-                            className="rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 text-sm"
-                        >
-                            <option value="created_at-desc">Newest First</option>
-                            <option value="created_at-asc">Oldest First</option>
-                            <option value="access_count-desc">Most Clicks</option>
-                            <option value="access_count-asc">Least Clicks</option>
-                            <option value="last_accessed_at-desc">Recently Accessed</option>
-                            <option value="short_code-asc">Short Code (A-Z)</option>
-                            <option value="short_code-desc">Short Code (Z-A)</option>
-                        </select>
+                        {/* ✅ Sort Options */}
+                        <div className="min-w-[200px]">
+                            <Select
+                                options={[
+                                    { value: 'created_at-desc', label: 'Newest First' },
+                                    { value: 'created_at-asc', label: 'Oldest First' },
+                                    { value: 'access_count-desc', label: 'Most Clicks' },
+                                    { value: 'access_count-asc', label: 'Least Clicks' },
+                                    { value: 'last_accessed_at-desc', label: 'Recently Accessed' },
+                                    { value: 'short_code-asc', label: 'Short Code (A–Z)' },
+                                    { value: 'short_code-desc', label: 'Short Code (Z–A)' },
+                                ]}
+                                value={`${params.sortBy}-${params.sortOrder}`}
+                                onChange={(val) => {
+                                    const [sortBy, sortOrder] = val.split('-');
+                                    setParams((prev) => ({
+                                        ...prev,
+                                        sortBy: sortBy as any,
+                                        sortOrder: sortOrder as any,
+                                        page: 1,
+                                    }));
+                                }}
+                            />
+                        </div>
 
+                        {/* ✅ Clear Filters Button */}
                         {hasActiveFilters && (
                             <Button
                                 variant="secondary"
@@ -223,14 +266,25 @@ const URLList: React.FC<URLListProps> = ({
                 </div>
             </div>
 
+
             {/* Results Summary */}
-            <div className="flex items-center justify-between text-sm">
+            <div className="flex items-center justify-between text-sm px-2">
                 <span className="text-gray-600">
-                    <strong className="text-gray-900">{paginationMeta?.totalItems || 0}</strong> URL{paginationMeta?.totalItems !== 1 ? 's' : ''} found
+                    <strong className="text-gray-900">
+                        {paginationMeta?.totalItems || 0}
+                    </strong>{' '}
+                    URL{paginationMeta?.totalItems !== 1 ? 's' : ''} found
                     {hasActiveFilters && ' (filtered)'}
                 </span>
                 <span className="text-gray-600">
-                    Page <strong className="text-gray-900">{paginationMeta?.currentPage || 1}</strong> of <strong className="text-gray-900">{paginationMeta?.totalPages || 1}</strong>
+                    Page{' '}
+                    <strong className="text-gray-900">
+                        {paginationMeta?.currentPage || 1}
+                    </strong>{' '}
+                    of{' '}
+                    <strong className="text-gray-900">
+                        {paginationMeta?.totalPages || 1}
+                    </strong>
                 </span>
             </div>
 
@@ -238,8 +292,19 @@ const URLList: React.FC<URLListProps> = ({
             {isFetching && (
                 <div className="fixed top-20 right-4 bg-blue-500 text-white px-4 py-2 rounded-lg shadow-lg flex items-center gap-2 z-50 animate-slide-down">
                     <svg className="animate-spin h-4 w-4" fill="none" viewBox="0 0 24 24">
-                        <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
-                        <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z" />
+                        <circle
+                            className="opacity-25"
+                            cx="12"
+                            cy="12"
+                            r="10"
+                            stroke="currentColor"
+                            strokeWidth="4"
+                        />
+                        <path
+                            className="opacity-75"
+                            fill="currentColor"
+                            d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"
+                        />
                     </svg>
                     <span className="text-sm">Refreshing...</span>
                 </div>
@@ -263,9 +328,18 @@ const URLList: React.FC<URLListProps> = ({
                 <div className="bg-white rounded-lg border border-gray-200 p-4">
                     <div className="flex flex-col sm:flex-row items-center justify-between gap-4">
                         <div className="text-sm text-gray-700">
-                            Showing <strong>{((paginationMeta.currentPage - 1) * paginationMeta.pageSize) + 1}</strong> to{' '}
-                            <strong>{Math.min(paginationMeta.currentPage * paginationMeta.pageSize, paginationMeta.totalItems)}</strong> of{' '}
-                            <strong>{paginationMeta.totalItems}</strong> results
+                            Showing{' '}
+                            <strong>
+                                {(paginationMeta.currentPage - 1) * paginationMeta.pageSize + 1}
+                            </strong>{' '}
+                            to{' '}
+                            <strong>
+                                {Math.min(
+                                    paginationMeta.currentPage * paginationMeta.pageSize,
+                                    paginationMeta.totalItems
+                                )}
+                            </strong>{' '}
+                            of <strong>{paginationMeta.totalItems}</strong> results
                         </div>
 
                         <div className="flex items-center gap-2">
@@ -275,20 +349,42 @@ const URLList: React.FC<URLListProps> = ({
                                 disabled={!paginationMeta.hasPrevPage}
                                 onClick={() => handlePageChange(paginationMeta.currentPage - 1)}
                             >
-                                <svg className="w-4 h-4 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
+                                <svg
+                                    className="w-4 h-4 mr-1"
+                                    fill="none"
+                                    stroke="currentColor"
+                                    viewBox="0 0 24 24"
+                                >
+                                    <path
+                                        strokeLinecap="round"
+                                        strokeLinejoin="round"
+                                        strokeWidth={2}
+                                        d="M15 19l-7-7 7-7"
+                                    />
                                 </svg>
                                 Previous
                             </Button>
 
                             <div className="flex items-center gap-1">
-                                {generatePageNumbers(paginationMeta.currentPage, paginationMeta.totalPages).map((pageNum, idx) => (
+                                {generatePageNumbers(
+                                    paginationMeta.currentPage,
+                                    paginationMeta.totalPages
+                                ).map((pageNum, idx) =>
                                     pageNum === '...' ? (
-                                        <span key={`ellipsis-${idx}`} className="px-3 py-1 text-gray-400">...</span>
+                                        <span
+                                            key={`ellipsis-${idx}`}
+                                            className="px-3 py-1 text-gray-400"
+                                        >
+                                            ...
+                                        </span>
                                     ) : (
                                         <Button
                                             key={pageNum}
-                                            variant={pageNum === paginationMeta.currentPage ? "primary" : "secondary"}
+                                            variant={
+                                                pageNum === paginationMeta.currentPage
+                                                    ? 'primary'
+                                                    : 'secondary'
+                                            }
                                             size="sm"
                                             onClick={() => handlePageChange(pageNum as number)}
                                             className="min-w-[2.5rem]"
@@ -296,7 +392,7 @@ const URLList: React.FC<URLListProps> = ({
                                             {pageNum}
                                         </Button>
                                     )
-                                ))}
+                                )}
                             </div>
 
                             <Button
@@ -306,8 +402,18 @@ const URLList: React.FC<URLListProps> = ({
                                 onClick={() => handlePageChange(paginationMeta.currentPage + 1)}
                             >
                                 Next
-                                <svg className="w-4 h-4 ml-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
+                                <svg
+                                    className="w-4 h-4 ml-1"
+                                    fill="none"
+                                    stroke="currentColor"
+                                    viewBox="0 0 24 24"
+                                >
+                                    <path
+                                        strokeLinecap="round"
+                                        strokeLinejoin="round"
+                                        strokeWidth={2}
+                                        d="M9 5l7 7-7 7"
+                                    />
                                 </svg>
                             </Button>
                         </div>
@@ -319,7 +425,10 @@ const URLList: React.FC<URLListProps> = ({
 };
 
 // Helper function to generate page numbers with ellipsis
-function generatePageNumbers(currentPage: number, totalPages: number): (number | string)[] {
+function generatePageNumbers(
+    currentPage: number,
+    totalPages: number
+): (number | string)[] {
     const pages: (number | string)[] = [];
     const showPages = 5;
 
@@ -380,7 +489,10 @@ const URLListSkeleton: React.FC = () => {
 
             <div className="space-y-4">
                 {Array.from({ length: 5 }, (_, i) => (
-                    <div key={i} className="bg-white border border-gray-200 rounded-lg p-4 animate-pulse">
+                    <div
+                        key={i}
+                        className="bg-white border border-gray-200 rounded-lg p-4 animate-pulse"
+                    >
                         <div className="flex items-start justify-between gap-4">
                             <div className="flex-1 space-y-3">
                                 <div className="flex items-center gap-2">
@@ -410,7 +522,10 @@ const URLListSkeleton: React.FC = () => {
                         <div className="h-8 bg-gray-200 rounded w-24 animate-pulse"></div>
                         <div className="flex gap-1">
                             {Array.from({ length: 5 }, (_, i) => (
-                                <div key={i} className="h-8 w-10 bg-gray-200 rounded animate-pulse"></div>
+                                <div
+                                    key={i}
+                                    className="h-8 w-10 bg-gray-200 rounded animate-pulse"
+                                ></div>
                             ))}
                         </div>
                         <div className="h-8 bg-gray-200 rounded w-20 animate-pulse"></div>
