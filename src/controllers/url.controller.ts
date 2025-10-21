@@ -89,13 +89,13 @@ export class UrlController {
             ApiResponse.created(
                 res,
                 {
-                    shortCode: result.shortCode,
-                    shortUrl: result.shortUrl,
-                    longUrl: result.longUrl,
-                    isCustomAlias: result.isCustomAlias,
-                    expiresAt: result.expiresAt,
-                    wasReused: result.wasReused,
-                    createdAt: new Date().toISOString()
+                    short_code: result.shortCode,
+                    short_url: result.shortUrl,
+                    long_url: result.longUrl,
+                    is_custom_alias: result.isCustomAlias,
+                    expires_at: result.expiresAt,
+                    was_reused: result.wasReused,
+                    created_at: new Date().toISOString()
                 },
                 { responseTime }
             )
