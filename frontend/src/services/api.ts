@@ -1,18 +1,16 @@
 import { createApi, fetchBaseQuery } from '@reduxjs/toolkit/query/react';
 import type { RootState } from '../store';
 import type {
-  AliasAvailabilityResponse,
   ApiResponse,
   AuthTokens,
   PaginatedResponse,
   URLItem,
   URLListParams,
-  User
+  User,
 } from '../types/url.types';
 import type { UserPermissions } from '../types/auth.types';
+import { API_BASE_URL } from '../utils/constant';
 
-// Base URL for API
-const API_BASE_URL = 'http://localhost:3000/api/v1';
 
 // API Service
 export const api = createApi({
@@ -102,7 +100,10 @@ export const api = createApi({
       }),
     }),
 
-    requestPasswordReset: builder.mutation<ApiResponse<void>, { email: string }>({
+    requestPasswordReset: builder.mutation<
+      ApiResponse<void>,
+      { email: string }
+    >({
       query: (data) => ({
         url: '/auth/request-password-reset',
         method: 'POST',
@@ -121,7 +122,10 @@ export const api = createApi({
       }),
     }),
 
-    getPermissions: builder.query<ApiResponse<{ permissions: UserPermissions }>, void>({
+    getPermissions: builder.query<
+      ApiResponse<{ permissions: UserPermissions }>,
+      void
+    >({
       query: () => '/auth/permissions',
       providesTags: ['Permissions'],
     }),
@@ -138,29 +142,6 @@ export const api = createApi({
       }),
       invalidatesTags: ['URLs'],
     }),
-
-    // getAllUrls: builder.query<
-    //   ApiResponse<URLItem[]>,
-    //   {
-    //     page?: number;
-    //     pageSize?: number;
-    //     sortBy?: string;
-    //     sortOrder?: 'asc' | 'desc';
-    //     search?: string;
-    //   }
-    // >({
-    //   query: (params) => ({
-    //     url: '/url/getAll',
-    //     params: {
-    //       page: params.page || 1,
-    //       pageSize: params.pageSize || 20,
-    //       sortBy: params.sortBy || 'created_at',
-    //       sortOrder: params.sortOrder || 'desc',
-    //       ...(params.search && { search: params.search }),
-    //     },
-    //   }),
-    //   providesTags: ['URLs'],
-    // }),
 
     deleteUrl: builder.mutation<ApiResponse<void>, string>({
       query: (shortCode) => ({
@@ -182,12 +163,18 @@ export const api = createApi({
       query: (shortCode) => `/url/resolve/${shortCode}`,
     }),
 
-    checkAliasAvailability: builder.query<AliasAvailabilityResponse, string>({
-      query: (alias) => `/url/check-alias/${alias}`,
+    checkAliasAvailability: builder.query<
+      ApiResponse<{
+        isAvailable: boolean;
+        suggestions?: string[];
+      }>,
+      string
+    >({
+      query: (alias) => `/url/check-alias?alias=${alias}`,
     }),
 
     getUserUrls: builder.query<
-      { data: ApiResponse<URLItem[]>, pagination: PaginatedResponse<URLItem> },
+      { data: ApiResponse<URLItem[]>; pagination: PaginatedResponse<URLItem> },
       URLListParams
     >({
       query: (params) => ({
@@ -198,13 +185,23 @@ export const api = createApi({
           ...(params.search && { search: params.search }),
           ...(params.sortBy && { sortBy: params.sortBy }),
           ...(params.sortOrder && { sortOrder: params.sortOrder }),
-          ...(params.isCustomAlias !== undefined && { isCustomAlias: params.isCustomAlias }),
-          ...(params.hasExpiry !== undefined && { hasExpiry: params.hasExpiry }),
-          ...(params.isExpired !== undefined && { isExpired: params.isExpired }),
+          ...(params.isCustomAlias !== undefined && {
+            isCustomAlias: params.isCustomAlias,
+          }),
+          ...(params.hasExpiry !== undefined && {
+            hasExpiry: params.hasExpiry,
+          }),
+          ...(params.isExpired !== undefined && {
+            isExpired: params.isExpired,
+          }),
           ...(params.dateFrom && { dateFrom: params.dateFrom }),
           ...(params.dateTo && { dateTo: params.dateTo }),
-          ...(params.minAccessCount !== undefined && { minAccessCount: params.minAccessCount }),
-          ...(params.maxAccessCount !== undefined && { maxAccessCount: params.maxAccessCount }),
+          ...(params.minAccessCount !== undefined && {
+            minAccessCount: params.minAccessCount,
+          }),
+          ...(params.maxAccessCount !== undefined && {
+            maxAccessCount: params.maxAccessCount,
+          }),
         },
       }),
       providesTags: ['URLs'],
@@ -285,7 +282,6 @@ export const {
   useCheckAliasAvailabilityQuery,
   useLazyCheckAliasAvailabilityQuery,
   useGetUserUrlsQuery,
-  // useGetAllUrlsQuery,
   useDeleteUrlMutation,
   useResolveUrlQuery,
   // Analytics
@@ -293,4 +289,3 @@ export const {
   useGetRealtimeAnalyticsQuery,
   useGetGlobalAnalyticsQuery,
 } = api;
-
