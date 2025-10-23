@@ -1,4 +1,5 @@
-import { createApi, fetchBaseQuery } from '@reduxjs/toolkit/query/react';
+import { createApi, fetchBaseQuery, retry } from '@reduxjs/toolkit/query/react';
+import type { BaseQueryFn, FetchArgs, FetchBaseQueryError } from '@reduxjs/toolkit/query';
 import type { RootState } from '../store';
 import type {
   ApiResponse,
@@ -9,23 +10,81 @@ import type {
   User,
 } from '../types/url.types';
 import type { UserPermissions } from '../types/auth.types';
+import type {
+  UpdatePreferencesRequest,
+  PreferencesResponse,
+  UpdateNotificationSettingsRequest,
+  NotificationSettingsResponse,
+  WebhookTestRequest,
+  WebhookTestResponse
+} from '../types/preferences.types';
 import { API_BASE_URL } from '../utils/constant';
+
+// Custom base query with automatic token refresh and error handling
+const baseQuery = fetchBaseQuery({
+  baseUrl: API_BASE_URL,
+  prepareHeaders: (headers, { getState }) => {
+    const token = (getState() as RootState).auth.tokens?.accessToken;
+    if (token) {
+      headers.set('Authorization', `Bearer ${token}`);
+    }
+    return headers;
+  },
+});
+
+const baseQueryWithReauth: BaseQueryFn<
+  string | FetchArgs,
+  unknown,
+  FetchBaseQueryError
+> = async (args, api, extraOptions) => {
+  let result = await baseQuery(args, api, extraOptions);
+
+  if (result.error && result.error.status === 401) {
+    // Try to get a new token
+    const refreshToken = (api.getState() as RootState).auth.tokens?.refreshToken;
+
+    if (refreshToken) {
+      const refreshResult = await baseQuery(
+        {
+          url: '/auth/refresh-token',
+          method: 'POST',
+          body: { refreshToken },
+        },
+        api,
+        extraOptions
+      );
+
+      if (refreshResult.data) {
+        // Store the new token
+        const { tokens } = (refreshResult.data as any).data;
+        api.dispatch({ type: 'auth/setTokens', payload: tokens });
+
+        // Retry the original query
+        result = await baseQuery(args, api, extraOptions);
+      } else {
+        // Refresh failed, logout user
+        api.dispatch({ type: 'auth/logout' });
+      }
+    } else {
+      // No refresh token, logout user
+      api.dispatch({ type: 'auth/logout' });
+    }
+  }
+
+  return result;
+};
+
+// Add retry logic for network errors
+const staggeredBaseQuery = retry(baseQueryWithReauth, {
+  maxRetries: 3,
+});
 
 
 // API Service
 export const api = createApi({
   reducerPath: 'api',
-  baseQuery: fetchBaseQuery({
-    baseUrl: API_BASE_URL,
-    prepareHeaders: (headers, { getState }) => {
-      const token = (getState() as RootState).auth.tokens?.accessToken;
-      if (token) {
-        headers.set('Authorization', `Bearer ${token}`);
-      }
-      return headers;
-    },
-  }),
-  tagTypes: ['Auth', 'URLs', 'Analytics', 'Permissions'],
+  baseQuery: staggeredBaseQuery,
+  tagTypes: ['Auth', 'URLs', 'Analytics', 'Permissions', 'Preferences', 'Notifications'],
   endpoints: (builder) => ({
     // Auth Endpoints
     register: builder.mutation<
@@ -130,6 +189,59 @@ export const api = createApi({
       providesTags: ['Permissions'],
     }),
 
+    // User Preferences Endpoints
+    getUserPreferences: builder.query<
+      ApiResponse<PreferencesResponse>,
+      void
+    >({
+      query: () => '/user/preferences',
+      providesTags: ['Preferences'],
+    }),
+
+    updateUserPreferences: builder.mutation<
+      ApiResponse<PreferencesResponse>,
+      UpdatePreferencesRequest
+    >({
+      query: (data) => ({
+        url: '/user/preferences',
+        method: 'PUT',
+        body: data,
+      }),
+      invalidatesTags: ['Preferences'],
+    }),
+
+    // Notification Settings Endpoints
+    getNotificationSettings: builder.query<
+      ApiResponse<NotificationSettingsResponse>,
+      void
+    >({
+      query: () => '/user/notifications',
+      providesTags: ['Notifications'],
+    }),
+
+    updateNotificationSettings: builder.mutation<
+      ApiResponse<NotificationSettingsResponse>,
+      UpdateNotificationSettingsRequest
+    >({
+      query: (data) => ({
+        url: '/user/notifications',
+        method: 'PUT',
+        body: data,
+      }),
+      invalidatesTags: ['Notifications'],
+    }),
+
+    testWebhook: builder.mutation<
+      ApiResponse<WebhookTestResponse>,
+      WebhookTestRequest
+    >({
+      query: (data) => ({
+        url: '/user/notifications/test-webhook',
+        method: 'POST',
+        body: data,
+      }),
+    }),
+
     // URL Endpoints
     createShortUrl: builder.mutation<
       ApiResponse<URLItem>,
@@ -140,7 +252,22 @@ export const api = createApi({
         method: 'POST',
         body: data,
       }),
-      invalidatesTags: ['URLs'],
+      invalidatesTags: ['URLs', 'Analytics'],
+      // Optimistic update
+      async onQueryStarted(_arg, { dispatch, queryFulfilled }) {
+        try {
+          await queryFulfilled;
+          // Invalidate and refetch user URLs
+          dispatch(
+            api.util.invalidateTags([
+              'URLs',
+              { type: 'Analytics', id: 'global' },
+            ])
+          );
+        } catch {
+          // Handle error if needed
+        }
+      },
     }),
 
     deleteUrl: builder.mutation<ApiResponse<void>, string>({
@@ -148,7 +275,19 @@ export const api = createApi({
         url: `/url/${shortCode}`,
         method: 'DELETE',
       }),
-      invalidatesTags: ['URLs'],
+      invalidatesTags: (_result, _error, shortCode) => [
+        'URLs',
+        { type: 'Analytics', id: shortCode },
+        { type: 'Analytics', id: 'global' },
+      ],
+      // Optimistic update
+      async onQueryStarted(_shortCode, { queryFulfilled }) {
+        try {
+          await queryFulfilled;
+        } catch {
+          // Handle error if needed
+        }
+      },
     }),
 
     resolveUrl: builder.query<
@@ -161,6 +300,18 @@ export const api = createApi({
       string
     >({
       query: (shortCode) => `/url/resolve/${shortCode}`,
+    }),
+
+    getUrlByShortCode: builder.query<
+      ApiResponse<{
+        shortCode: string;
+        longUrl: string;
+        accessCount: number;
+        expiresAt?: string;
+      }>,
+      string
+    >({
+      query: (shortCode) => `/url/${shortCode}`,
     }),
 
     checkAliasAvailability: builder.query<
@@ -204,7 +355,15 @@ export const api = createApi({
           }),
         },
       }),
-      providesTags: ['URLs'],
+      providesTags: (result) => [
+        'URLs',
+        ...(result?.data?.data?.map(({ short_code }) => ({
+          type: 'URLs' as const,
+          id: short_code,
+        })) ?? []),
+      ],
+      // Keep data for 5 minutes
+      keepUnusedDataFor: 300,
     }),
 
     // Analytics Endpoints
@@ -227,7 +386,12 @@ export const api = createApi({
           ...(dateTo && { date_to: dateTo }),
         },
       }),
-      providesTags: ['Analytics'],
+      providesTags: (_result, _error, { shortCode }) => [
+        { type: 'Analytics', id: shortCode },
+        'Analytics',
+      ],
+      // Refetch analytics when URLs are modified
+      keepUnusedDataFor: 300, // 5 minutes
     }),
 
     getRealtimeAnalytics: builder.query<
@@ -242,6 +406,9 @@ export const api = createApi({
       string
     >({
       query: (shortCode) => `/analytics/${shortCode}/realtime`,
+      providesTags: (_result, _error, shortCode) => [
+        { type: 'Analytics', id: `${shortCode}-realtime` },
+      ],
     }),
 
     getGlobalAnalytics: builder.query<
@@ -260,7 +427,9 @@ export const api = createApi({
           ...(params.dateTo && { date_to: params.dateTo }),
         },
       }),
-      providesTags: ['Analytics'],
+      providesTags: ['Analytics', 'URLs'],
+      // Refetch global analytics when URLs change
+      keepUnusedDataFor: 600, // 10 minutes
     }),
   }),
 });
@@ -277,6 +446,13 @@ export const {
   useRequestPasswordResetMutation,
   useConfirmPasswordResetMutation,
   useGetPermissionsQuery,
+  // User Preferences
+  useGetUserPreferencesQuery,
+  useUpdateUserPreferencesMutation,
+  // Notification Settings
+  useGetNotificationSettingsQuery,
+  useUpdateNotificationSettingsMutation,
+  useTestWebhookMutation,
   // URLs
   useCreateShortUrlMutation,
   useCheckAliasAvailabilityQuery,
@@ -284,6 +460,7 @@ export const {
   useGetUserUrlsQuery,
   useDeleteUrlMutation,
   useResolveUrlQuery,
+  useGetUrlByShortCodeQuery,
   // Analytics
   useGetAnalyticsQuery,
   useGetRealtimeAnalyticsQuery,
