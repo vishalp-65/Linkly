@@ -1,6 +1,6 @@
 import React, { useState, useMemo } from 'react';
-
-// interface SettingsPageProps {}
+import URLPreferencesComponent from '../components/settings/URLPreferences';
+import NotificationSettingsComponent from '../components/settings/NotificationSettings';
 
 type TabId = 'account' | 'preferences' | 'api' | 'notifications';
 
@@ -33,11 +33,11 @@ const SettingsPage: React.FC = () => {
   }, [activeTab]);
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-gray-50 via-blue-50 to-indigo-100 py-8">
+    <div className="min-h-screen bg-gray-50 dark:bg-gray-900 py-8">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         <div className="mb-8">
-          <h1 className="text-3xl font-bold text-gray-900">Settings</h1>
-          <p className="mt-2 text-gray-600">
+          <h1 className="text-3xl font-bold text-gray-900 dark:text-white">Settings</h1>
+          <p className="mt-2 text-gray-600 dark:text-gray-400">
             Manage your account settings and preferences
           </p>
         </div>
@@ -45,17 +45,16 @@ const SettingsPage: React.FC = () => {
         <div className="flex flex-col lg:flex-row gap-8">
           {/* Sidebar Navigation */}
           <div className="lg:w-64 shrink-0">
-            <div className="bg-white rounded-xl shadow-lg border border-gray-100 overflow-hidden">
+            <div className="bg-white dark:bg-gray-800 rounded-xl shadow-lg border border-gray-100 dark:border-gray-700 overflow-hidden">
               <nav className="p-2">
                 {tabs.map((tab) => (
                   <button
                     key={tab.id}
                     onClick={() => setActiveTab(tab.id)}
-                    className={`w-full flex items-center px-4 py-3 text-left text-sm font-medium rounded-lg transition-all duration-200 ${
-                      activeTab === tab.id
-                        ? 'bg-gradient-to-r from-blue-50 to-indigo-50 text-blue-700 border-l-4 border-blue-700 shadow-sm'
-                        : 'text-gray-600 hover:bg-gray-50 hover:text-gray-900'
-                    }`}
+                    className={`w-full flex items-center px-4 py-3 text-left text-sm font-medium rounded-lg transition-all duration-200 ${activeTab === tab.id
+                        ? 'bg-gradient-to-r from-blue-50 to-indigo-50 dark:from-blue-900/50 dark:to-indigo-900/50 text-blue-700 dark:text-blue-300 border-l-4 border-blue-700 dark:border-blue-500 shadow-sm'
+                        : 'text-gray-600 dark:text-gray-400 hover:bg-gray-50 dark:hover:bg-gray-700 hover:text-gray-900 dark:hover:text-gray-200'
+                      }`}
                   >
                     <span className="mr-3 text-lg">{tab.icon}</span>
                     {tab.label}
@@ -73,47 +72,25 @@ const SettingsPage: React.FC = () => {
   );
 };
 
-// Placeholder components - replace with your actual components
 const AccountSettings: React.FC = () => {
   return (
-    <div className="bg-white rounded-xl shadow-lg border border-gray-100 p-6">
-      <h2 className="text-xl font-semibold text-gray-900 mb-4">
+    <div className="bg-white dark:bg-gray-800 rounded-xl shadow-lg border border-gray-100 dark:border-gray-700 p-6">
+      <h2 className="text-xl font-semibold text-gray-900 dark:text-white mb-4">
         Account Settings
       </h2>
-      <p className="text-gray-600">
+      <p className="text-gray-600 dark:text-gray-400">
         Manage your account information and security settings.
       </p>
-      {/* Add your account settings form here */}
     </div>
   );
 };
 
 const URLPreferences: React.FC = () => {
-  return (
-    <div className="bg-white rounded-xl shadow-lg border border-gray-100 p-6">
-      <h2 className="text-xl font-semibold text-gray-900 mb-4">
-        URL Preferences
-      </h2>
-      <p className="text-gray-600">
-        Configure default settings for URL shortening.
-      </p>
-      {/* Add your URL preferences form here */}
-    </div>
-  );
+  return <URLPreferencesComponent />;
 };
 
 const NotificationSettings: React.FC = () => {
-  return (
-    <div className="bg-white rounded-xl shadow-lg border border-gray-100 p-6">
-      <h2 className="text-xl font-semibold text-gray-900 mb-4">
-        Notification Settings
-      </h2>
-      <p className="text-gray-600">
-        Control how and when you receive notifications.
-      </p>
-      {/* Add your notification settings form here */}
-    </div>
-  );
+  return <NotificationSettingsComponent />;
 };
 
 export default SettingsPage;
