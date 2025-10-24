@@ -61,10 +61,10 @@ const Toggle: React.FC<ToggleProps> = ({
     const switchClasses = `
     ${config.switch}
     relative inline-flex flex-shrink-0 cursor-pointer rounded-full border-2 border-transparent 
-    transition-colors duration-200 ease-in-out focus:outline-none focus:ring-2 focus:ring-blue-600 focus:ring-offset-2
+    transition-colors duration-200 ease-in-out focus:outline-none focus:ring-2 focus:ring-blue-600 dark:focus:ring-blue-500 focus:ring-offset-2 dark:focus:ring-offset-gray-800
     ${checked
-            ? 'bg-blue-600'
-            : 'bg-gray-200'
+            ? 'bg-blue-600 dark:bg-blue-500'
+            : 'bg-gray-200 dark:bg-gray-700'
         }
     ${disabled
             ? 'cursor-not-allowed opacity-50'
@@ -74,7 +74,7 @@ const Toggle: React.FC<ToggleProps> = ({
 
     const thumbClasses = `
     ${config.thumb} ${config.translate}
-    pointer-events-none inline-block rounded-full bg-white shadow transform ring-0 
+    pointer-events-none inline-block rounded-full bg-white dark:bg-gray-200 shadow transform ring-0 
     transition duration-200 ease-in-out
   `;
 
@@ -104,7 +104,7 @@ const Toggle: React.FC<ToggleProps> = ({
                     {label && (
                         <label
                             htmlFor={toggleId}
-                            className={`text-sm font-medium text-gray-900 cursor-pointer ${disabled ? 'cursor-not-allowed opacity-50' : ''
+                            className={`text-sm font-medium text-gray-900 dark:text-white cursor-pointer ${disabled ? 'cursor-not-allowed opacity-50' : ''
                                 }`}
                             id={`${toggleId}-label`}
                         >
@@ -113,7 +113,7 @@ const Toggle: React.FC<ToggleProps> = ({
                     )}
                     {description && (
                         <p
-                            className={`text-sm text-gray-500 ${disabled ? 'opacity-50' : ''
+                            className={`text-sm text-gray-500 dark:text-gray-400 ${disabled ? 'opacity-50' : ''
                                 }`}
                             id={`${toggleId}-description`}
                         >
