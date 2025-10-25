@@ -7,6 +7,7 @@ export interface CardProps {
     description?: string;
     padding?: 'none' | 'sm' | 'md' | 'lg';
     hover?: boolean;
+    style?: React.CSSProperties;
 }
 
 const Card: React.FC<CardProps> = ({
@@ -16,6 +17,7 @@ const Card: React.FC<CardProps> = ({
     description,
     padding = 'md',
     hover = false,
+    style = { animationDelay: '0s' },
 }) => {
     const paddingClasses = {
         none: '',
@@ -25,11 +27,28 @@ const Card: React.FC<CardProps> = ({
     };
 
     return (
-        <div className={`bg-white rounded-lg shadow-md border border-gray-200 ${hover ? 'hover:shadow-lg transition-shadow duration-200' : ''} ${className}`}>
+        <div
+            className={`
+                bg-white dark:bg-gray-800 
+                text-gray-900 dark:text-gray-100 
+                rounded-lg shadow-md border border-gray-200 dark:border-gray-700 
+                ${hover ? 'hover:shadow-lg transition-shadow duration-200' : ''} 
+                ${className}
+            `}
+            style={style}
+        >
             {(title || description) && (
-                <div className="px-6 py-4 border-b border-gray-200">
-                    {title && <h3 className="text-lg font-semibold text-gray-900">{title}</h3>}
-                    {description && <p className="text-sm text-gray-600 mt-1">{description}</p>}
+                <div className="px-6 py-4 border-b border-gray-200 dark:border-gray-700">
+                    {title && (
+                        <h3 className="text-lg font-semibold text-gray-900 dark:text-gray-100">
+                            {title}
+                        </h3>
+                    )}
+                    {description && (
+                        <p className="text-sm text-gray-600 dark:text-gray-400 mt-1">
+                            {description}
+                        </p>
+                    )}
                 </div>
             )}
             <div className={paddingClasses[padding]}>

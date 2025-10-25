@@ -18,3 +18,12 @@ export type { ToggleProps } from './Toggle';
 
 export { default as Select } from './Select';
 export type { SelectProps, SelectOption } from './Select';
+
+export { default as LoadingFallback } from './LoadingFallback';
+export { default as LazyWrapper } from './LazyWrapper';
+export { default as VirtualList } from './VirtualList';
+export { default as LazyImage } from './LazyImage';
+export { default as SearchInput } from './SearchInput';
+export { default as SkipLink } from './SkipLink';
+export { default as FocusTrap } from './FocusTrap';
+export { default as ThemeToggle } from './ThemeToggle';
