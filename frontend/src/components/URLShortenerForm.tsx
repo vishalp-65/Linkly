@@ -5,6 +5,9 @@ import { useCreateShortUrlMutation } from '../services/api';
 import AliasAvailabilityChecker from './AliasAvailabilityChecker';
 import Input from './common/Input';
 import Button from './common/Button';
+import Card from './common/Card';
+import Modal from './common/Modal';
+import URLResult, { type URLResultData } from './URLResult';
 import { useToast } from '../contexts/ToastContext';
 import { API_REDIRECT_BASE_URL } from '../utils/constant';
 
@@ -13,10 +16,9 @@ interface URLShortenerFormProps {
 }
 
 const URLShortenerForm: React.FC<URLShortenerFormProps> = ({ onSuccess }) => {
-    const { permissions, isGuest } = useSelector(
-        (state: RootState) => state.auth
-    );
+    const { permissions, isGuest } = useSelector((state: RootState) => state.auth);
     const [createShortUrl, { isLoading }] = useCreateShortUrlMutation();
+    const { showToast } = useToast();
 
     const [url, setUrl] = useState('');
     const [customAlias, setCustomAlias] = useState('');
@@ -25,9 +27,9 @@ const URLShortenerForm: React.FC<URLShortenerFormProps> = ({ onSuccess }) => {
     const [useExpiry, setUseExpiry] = useState(false);
     const [isAliasAvailable, setIsAliasAvailable] = useState(false);
     const [error, setError] = useState<string | null>(null);
-    const [success, setSuccess] = useState<string | null>(null);
     const [suggestions, setSuggestions] = useState<string[]>([]);
-    const { showToast } = useToast();
+    const [urlResult, setUrlResult] = useState<URLResultData | null>(null);
+    const [isModalOpen, setIsModalOpen] = useState(false);
 
     const canUseCustomAlias = permissions?.canCreateCustomAlias && !isGuest;
     const canSetExpiry = permissions?.canSetCustomExpiry && !isGuest;
@@ -52,9 +54,7 @@ const URLShortenerForm: React.FC<URLShortenerFormProps> = ({ onSuccess }) => {
     const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault();
         setError(null);
-        setSuccess(null);
 
-        // Validation
         if (!url.trim()) {
             setError('Please enter a URL');
             return;
@@ -71,17 +71,11 @@ const URLShortenerForm: React.FC<URLShortenerFormProps> = ({ onSuccess }) => {
         }
 
         if (useCustomAlias && !isAliasAvailable) {
-            setError(
-                'The custom alias is not available. Please choose another one or select from suggestions.'
-            );
+            setError('The custom alias is not available. Please choose another one or select from suggestions.');
             return;
         }
 
-        if (
-            useExpiry &&
-            expiryDays &&
-            (parseInt(expiryDays) < 1 || parseInt(expiryDays) > 3650)
-        ) {
+        if (useExpiry && expiryDays && (parseInt(expiryDays) < 1 || parseInt(expiryDays) > 3650)) {
             setError('Expiry days must be between 1 and 3650');
             return;
         }
@@ -89,13 +83,23 @@ const URLShortenerForm: React.FC<URLShortenerFormProps> = ({ onSuccess }) => {
         try {
             const result = await createShortUrl({
                 url: url.trim(),
-                ...(useCustomAlias &&
-                    customAlias && { customAlias: customAlias.trim() }),
+                ...(useCustomAlias && customAlias && { customAlias: customAlias.trim() }),
                 ...(useExpiry && expiryDays && { expiryDays: parseInt(expiryDays) }),
             }).unwrap();
 
-            // Success
-            setSuccess(`Short URL created: ${API_REDIRECT_BASE_URL}/${result.data.short_code}`);
+            const shortUrl = `${API_REDIRECT_BASE_URL}/${result.data.short_code}`;
+
+            // Set URL result data and open modal
+            setUrlResult({
+                shortUrl: shortUrl,
+                originalUrl: result.data.long_url,
+                customAlias: result.data.is_custom_alias ? result.data.short_code : undefined,
+                expiryDate: result.data.expires_at,
+                createdAt: result.data.created_at,
+            });
+            setIsModalOpen(true);
+
+            // Clear form
             setUrl('');
             setCustomAlias('');
             setExpiryDays('');
@@ -113,27 +117,21 @@ const URLShortenerForm: React.FC<URLShortenerFormProps> = ({ onSuccess }) => {
                 onSuccess(result.data.short_code);
             }
         } catch (err: unknown) {
-            // Narrow unknown to the expected API error shape
-            const apiErr =
-                (err as {
-                    data?: {
-                        error?: string;
-                        message?: string;
-                        details?: { suggestions?: string[] };
-                    };
-                }) ?? {};
+            const apiErr = (err as {
+                data?: {
+                    error?: string;
+                    message?: string;
+                    details?: { suggestions?: string[] };
+                };
+            }) ?? {};
 
-            // Handle alias taken error with suggestions
             if (apiErr.data?.error === 'ALIAS_TAKEN') {
                 setError(apiErr.data.message || 'Custom alias is already taken');
                 if (apiErr.data.details?.suggestions) {
                     setSuggestions(apiErr.data.details.suggestions);
                 }
             } else {
-                setError(
-                    apiErr.data?.message ||
-                    'Failed to create short URL. Please try again.'
-                );
+                setError(apiErr.data?.message || 'Failed to create short URL. Please try again.');
             }
 
             showToast({
@@ -157,193 +155,146 @@ const URLShortenerForm: React.FC<URLShortenerFormProps> = ({ onSuccess }) => {
         setUseCustomAlias(false);
         setUseExpiry(false);
         setError(null);
-        setSuccess(null);
         setSuggestions([]);
     };
 
-    return (
-        <div className="bg-white rounded-xl shadow-lg border border-gray-100 p-6 mb-8 animate-fade-in">
-            <div className="mb-6">
-                <h2 className="text-xl font-semibold text-gray-900 flex items-center">
-                    <svg
-                        className="w-6 h-6 mr-2 text-blue-600"
-                        fill="none"
-                        stroke="currentColor"
-                        viewBox="0 0 24 24"
-                    >
-                        <path
-                            strokeLinecap="round"
-                            strokeLinejoin="round"
-                            strokeWidth={2}
-                            d="M13.828 10.172a4 4 0 00-5.656 0l-4 4a4 4 0 105.656 5.656l1.102-1.101m-.758-4.899a4 4 0 005.656 0l4-4a4 4 0 00-5.656-5.656l-1.1 1.1"
-                        />
-                    </svg>
-                    Shorten URL
-                </h2>
-                <p className="text-sm text-gray-600 mt-1">
-                    Create a short link for your long URL
-                </p>
-            </div>
+    const handleCloseModal = () => {
+        setIsModalOpen(false);
+    };
 
-            <form onSubmit={handleSubmit} className="space-y-4">
-                {/* URL Input */}
-                <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-2">
-                        Long URL *
-                    </label>
+    const handleShowToast = (message: string, type: 'success' | 'error') => {
+        showToast({
+            type,
+            title: type === 'success' ? 'Success' : 'Error',
+            message,
+        });
+    };
+
+    return (
+        <>
+            <Card padding="md" className="dark:bg-gray-800 dark:border-gray-700 animate-fade-in mb-8">
+                <div className="mb-6">
+                    <h2 className="text-xl font-semibold text-gray-900 dark:text-gray-100 flex items-center">
+                        <svg className="w-6 h-6 mr-2 text-blue-600 dark:text-blue-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13.828 10.172a4 4 0 00-5.656 0l-4 4a4 4 0 105.656 5.656l1.102-1.101m-.758-4.899a4 4 0 005.656 0l4-4a4 4 0 00-5.656-5.656l-1.1 1.1" />
+                        </svg>
+                        Shorten URL
+                    </h2>
+                    <p className="text-sm text-gray-600 dark:text-gray-400 mt-1">
+                        Create a short link for your long URL
+                    </p>
+                </div>
+
+                <form onSubmit={handleSubmit} className="space-y-4">
                     <Input
+                        label={<>Long URL <span className="text-red-500 dark:text-red-400">*</span></>}
                         type="url"
                         value={url}
                         onChange={(e) => setUrl(e.target.value)}
                         placeholder="https://example.com/very-long-url"
                         required
                         leftIcon={
-                            <svg
-                                className="w-5 h-5"
-                                fill="none"
-                                stroke="currentColor"
-                                viewBox="0 0 24 24"
-                            >
-                                <path
-                                    strokeLinecap="round"
-                                    strokeLinejoin="round"
-                                    strokeWidth={2}
-                                    d="M13.828 10.172a4 4 0 00-5.656 0l-4 4a4 4 0 105.656 5.656l1.102-1.101m-.758-4.899a4 4 0 005.656 0l4-4a4 4 0 00-5.656-5.656l-1.1 1.1"
-                                />
+                            <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13.828 10.172a4 4 0 00-5.656 0l-4 4a4 4 0 105.656 5.656l1.102-1.101m-.758-4.899a4 4 0 005.656 0l4-4a4 4 0 00-5.656-5.656l-1.1 1.1" />
                             </svg>
                         }
                     />
-                </div>
 
-                {/* Custom Alias Toggle */}
-                {canUseCustomAlias && (
-                    <div className="flex items-center space-x-2 p-4 bg-gray-50 rounded-lg">
-                        <input
-                            type="checkbox"
-                            id="useCustomAlias"
-                            checked={useCustomAlias}
-                            onChange={(e) => {
-                                setUseCustomAlias(e.target.checked);
-                                if (!e.target.checked) {
-                                    setCustomAlias('');
-                                    setSuggestions([]);
-                                    setError(null);
-                                }
-                            }}
-                            className="rounded text-blue-600 focus:ring-blue-500"
-                        />
-                        <label
-                            htmlFor="useCustomAlias"
-                            className="text-sm font-medium text-gray-700 cursor-pointer"
-                        >
-                            Use custom alias (optional)
-                        </label>
-                    </div>
-                )}
-
-                {!canUseCustomAlias && !isGuest && (
-                    <div className="flex items-center space-x-2 p-3 bg-yellow-50 border border-yellow-200 rounded-lg">
-                        <svg
-                            className="w-5 h-5 text-yellow-600 flex-shrink-0"
-                            fill="none"
-                            stroke="currentColor"
-                            viewBox="0 0 24 24"
-                        >
-                            <path
-                                strokeLinecap="round"
-                                strokeLinejoin="round"
-                                strokeWidth={2}
-                                d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"
+                    {canUseCustomAlias && (
+                        <div className="flex items-center space-x-2 p-4 bg-gray-50 dark:bg-gray-700 rounded-lg">
+                            <input
+                                type="checkbox"
+                                id="useCustomAlias"
+                                checked={useCustomAlias}
+                                onChange={(e) => {
+                                    setUseCustomAlias(e.target.checked);
+                                    if (!e.target.checked) {
+                                        setCustomAlias('');
+                                        setSuggestions([]);
+                                        setError(null);
+                                    }
+                                }}
+                                className="rounded text-blue-600 focus:ring-blue-500 h-3.5 w-3.5"
                             />
-                        </svg>
-                        <p className="text-sm text-yellow-800">
-                            Custom aliases are available for logged in users
-                        </p>
-                    </div>
-                )}
-
-                {/* Custom Alias Input */}
-                {useCustomAlias && canUseCustomAlias && (
-                    <div>
-                        <label className="block text-sm font-medium text-gray-700 mb-2">
-                            Custom Alias
-                        </label>
-                        <AliasAvailabilityChecker
-                            value={customAlias}
-                            onChange={setCustomAlias}
-                            onAvailabilityChange={handleAliasAvailabilityChange}
-                            onSuggestionsChange={handleSuggestionsChange}
-                            disabled={isLoading}
-                        />
-                    </div>
-                )}
-
-                {/* Suggestions */}
-                {suggestions.length > 0 && (
-                    <div className="space-y-2 p-4 bg-blue-50 border border-blue-200 rounded-lg animate-fade-in">
-                        <p className="text-sm font-medium text-blue-900 flex items-center">
-                            <svg
-                                className="w-4 h-4 mr-2"
-                                fill="none"
-                                stroke="currentColor"
-                                viewBox="0 0 24 24"
-                            >
-                                <path
-                                    strokeLinecap="round"
-                                    strokeLinejoin="round"
-                                    strokeWidth={2}
-                                    d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"
-                                />
-                            </svg>
-                            Available alternatives:
-                        </p>
-                        <div className="flex flex-wrap gap-2">
-                            {suggestions.map((suggestion) => (
-                                <button
-                                    key={suggestion}
-                                    type="button"
-                                    onClick={() => handleSuggestionClick(suggestion)}
-                                    className="px-3 py-1.5 text-sm bg-white text-blue-700 rounded-md hover:bg-blue-100 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-1 transition-all transform hover:scale-105 border border-blue-300"
-                                    disabled={isLoading}
-                                >
-                                    {suggestion}
-                                </button>
-                            ))}
+                            <label htmlFor="useCustomAlias" className="text-sm font-medium cursor-pointer text-gray-700 dark:text-gray-300">
+                                Use custom alias (optional)
+                            </label>
                         </div>
-                    </div>
-                )}
+                    )}
 
-                {/* Expiry Toggle */}
-                {canSetExpiry && (
-                    <div className="flex items-center space-x-2 p-4 bg-gray-50 rounded-lg">
-                        <input
-                            type="checkbox"
-                            id="useExpiry"
-                            checked={useExpiry}
-                            onChange={(e) => {
-                                setUseExpiry(e.target.checked);
-                                if (!e.target.checked) {
-                                    setExpiryDays('');
-                                }
-                            }}
-                            className="rounded text-blue-600 focus:ring-blue-500"
-                        />
-                        <label
-                            htmlFor="useExpiry"
-                            className="text-sm font-medium text-gray-700 cursor-pointer"
-                        >
-                            Set expiration date (optional)
-                        </label>
-                    </div>
-                )}
+                    {!canUseCustomAlias && !isGuest && (
+                        <div className="flex items-center space-x-2 p-3 bg-yellow-50 dark:bg-yellow-900/20 border border-yellow-200 dark:border-yellow-800 rounded-lg">
+                            <svg className="w-5 h-5 text-yellow-600 dark:text-yellow-500 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
+                            </svg>
+                            <p className="text-sm text-yellow-800 dark:text-yellow-200">
+                                Custom aliases are available for logged in users
+                            </p>
+                        </div>
+                    )}
 
-                {/* Expiry Input */}
-                {useExpiry && canSetExpiry && (
-                    <div>
-                        <label className="block text-sm font-medium text-gray-700 mb-2">
-                            Expires in (days)
-                        </label>
+                    {useCustomAlias && canUseCustomAlias && (
+                        <div>
+                            <label className="block text-sm font-medium mb-2 text-gray-700 dark:text-gray-300">
+                                Custom Alias
+                            </label>
+                            <AliasAvailabilityChecker
+                                value={customAlias}
+                                onChange={setCustomAlias}
+                                onAvailabilityChange={handleAliasAvailabilityChange}
+                                onSuggestionsChange={handleSuggestionsChange}
+                                disabled={isLoading}
+                            />
+                        </div>
+                    )}
+
+                    {suggestions.length > 0 && (
+                        <div className="space-y-2 p-4 bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800 rounded-lg animate-fade-in">
+                            <p className="text-sm font-medium text-blue-900 dark:text-blue-300 flex items-center">
+                                <svg className="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                                </svg>
+                                Available alternatives:
+                            </p>
+                            <div className="flex flex-wrap gap-2">
+                                {suggestions.map((suggestion) => (
+                                    <button
+                                        key={suggestion}
+                                        type="button"
+                                        onClick={() => handleSuggestionClick(suggestion)}
+                                        className="px-3 py-1.5 text-sm bg-white dark:bg-gray-800 text-blue-700 dark:text-blue-300 rounded-md hover:bg-blue-100 dark:hover:bg-blue-900/30 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-1 transition-all transform hover:scale-105 border border-blue-300 dark:border-blue-700"
+                                        disabled={isLoading}
+                                    >
+                                        {suggestion}
+                                    </button>
+                                ))}
+                            </div>
+                        </div>
+                    )}
+
+                    {canSetExpiry && (
+                        <div className="flex items-center space-x-2 p-4 bg-gray-50 dark:bg-gray-700 rounded-lg">
+                            <input
+                                type="checkbox"
+                                id="useExpiry"
+                                checked={useExpiry}
+                                onChange={(e) => {
+                                    setUseExpiry(e.target.checked);
+                                    if (!e.target.checked) {
+                                        setExpiryDays('');
+                                    }
+                                }}
+                                className="rounded text-blue-600 focus:ring-blue-500 h-3.5 w-3.5"
+                            />
+                            <label htmlFor="useExpiry" className="text-sm font-medium cursor-pointer text-gray-700 dark:text-gray-300">
+                                Set expiration date (optional)
+                            </label>
+                        </div>
+                    )}
+
+                    {useExpiry && canSetExpiry && (
                         <Input
+                            label="Expires in (days)"
                             type="number"
                             value={expiryDays}
                             onChange={(e) => setExpiryDays(e.target.value)}
@@ -351,122 +302,78 @@ const URLShortenerForm: React.FC<URLShortenerFormProps> = ({ onSuccess }) => {
                             min="1"
                             max="3650"
                             leftIcon={
-                                <svg
-                                    className="w-5 h-5"
-                                    fill="none"
-                                    stroke="currentColor"
-                                    viewBox="0 0 24 24"
-                                >
-                                    <path
-                                        strokeLinecap="round"
-                                        strokeLinejoin="round"
-                                        strokeWidth={2}
-                                        d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z"
-                                    />
+                                <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
                                 </svg>
                             }
                             helperText="Link will expire after specified days (1-3650)"
                         />
-                    </div>
-                )}
+                    )}
 
-                {/* Error Message */}
-                {error && (
-                    <div className="p-4 bg-red-50 border border-red-200 rounded-lg animate-fade-in">
-                        <div className="flex">
-                            <svg
-                                className="w-5 h-5 text-red-600 mr-2 flex-shrink-0"
-                                fill="none"
-                                stroke="currentColor"
-                                viewBox="0 0 24 24"
-                            >
-                                <path
-                                    strokeLinecap="round"
-                                    strokeLinejoin="round"
-                                    strokeWidth={2}
-                                    d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"
-                                />
-                            </svg>
-                            <p className="text-sm text-red-800">{error}</p>
+                    {error && (
+                        <div className="p-4 bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded-lg animate-fade-in">
+                            <div className="flex">
+                                <svg className="w-5 h-5 text-red-600 dark:text-red-400 mr-2 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                                </svg>
+                                <p className="text-sm text-red-800 dark:text-red-300">{error}</p>
+                            </div>
                         </div>
-                    </div>
-                )}
+                    )}
 
-                {/* Success Message */}
-                {success && (
-                    <div className="p-4 bg-green-50 border border-green-200 rounded-lg animate-fade-in">
-                        <div className="flex">
-                            <svg
-                                className="w-5 h-5 text-green-600 mr-2 flex-shrink-0"
-                                fill="none"
-                                stroke="currentColor"
-                                viewBox="0 0 24 24"
-                            >
-                                <path
-                                    strokeLinecap="round"
-                                    strokeLinejoin="round"
-                                    strokeWidth={2}
-                                    d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"
-                                />
+                    <div className="flex items-center justify-end space-x-3 pt-2">
+                        <Button
+                            type="button"
+                            variant="secondary"
+                            onClick={handleReset}
+                            disabled={isLoading}
+                        >
+                            Reset
+                        </Button>
+                        <Button
+                            type="submit"
+                            variant="primary"
+                            loading={isLoading}
+                            disabled={isLoading || (useCustomAlias && !isAliasAvailable)}
+                        >
+                            {isLoading ? 'Creating...' : 'Shorten URL'}
+                        </Button>
+                    </div>
+                </form>
+
+                {isGuest && (
+                    <div className="mt-4 p-4 bg-gradient-to-r from-yellow-50 to-orange-50 dark:from-yellow-900/20 dark:to-orange-900/20 border border-yellow-200 dark:border-yellow-800 rounded-lg">
+                        <div className="flex items-start">
+                            <svg className="w-5 h-5 text-yellow-600 dark:text-yellow-500 mr-2 mt-0.5 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
                             </svg>
-                            <div className="flex-1">
-                                <p className="text-sm text-green-800">{success}</p>
+                            <div>
+                                <p className="text-sm font-medium text-yellow-900 dark:text-yellow-200">
+                                    Guest Mode Limitations
+                                </p>
+                                <p className="text-xs text-yellow-800 dark:text-yellow-300 mt-1">
+                                    Sign up to unlock custom aliases, expiration dates, analytics, and more!
+                                </p>
                             </div>
                         </div>
                     </div>
                 )}
+            </Card>
 
-                {/* Action Buttons */}
-                <div className="flex items-center justify-end space-x-3 pt-2">
-                    <Button
-                        type="button"
-                        variant="secondary"
-                        onClick={handleReset}
-                        disabled={isLoading}
-                    >
-                        Reset
-                    </Button>
-                    <Button
-                        type="submit"
-                        variant="primary"
-                        loading={isLoading}
-                        disabled={isLoading || (useCustomAlias && !isAliasAvailable)}
-                    >
-                        {isLoading ? 'Creating...' : 'Shorten URL'}
-                    </Button>
-                </div>
-            </form>
-
-            {/* Guest Mode Info */}
-            {isGuest && (
-                <div className="mt-4 p-4 bg-gradient-to-r from-yellow-50 to-orange-50 border border-yellow-200 rounded-lg">
-                    <div className="flex items-start">
-                        <svg
-                            className="w-5 h-5 text-yellow-600 mr-2 mt-0.5 flex-shrink-0"
-                            fill="none"
-                            stroke="currentColor"
-                            viewBox="0 0 24 24"
-                        >
-                            <path
-                                strokeLinecap="round"
-                                strokeLinejoin="round"
-                                strokeWidth={2}
-                                d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"
-                            />
-                        </svg>
-                        <div>
-                            <p className="text-sm font-medium text-yellow-900">
-                                Guest Mode Limitations
-                            </p>
-                            <p className="text-xs text-yellow-800 mt-1">
-                                Sign up to unlock custom aliases, expiration dates, analytics,
-                                and more!
-                            </p>
-                        </div>
-                    </div>
-                </div>
-            )}
-        </div>
+            {/* Display URL Result in Modal */}
+            <Modal
+                isOpen={isModalOpen}
+                onClose={handleCloseModal}
+                title="URL Shortened Successfully!"
+                size="xl"
+                closeOnOverlayClick={true}
+                closeOnEscape={true}
+            >
+                {urlResult && (
+                    <URLResult result={urlResult} onShowToast={handleShowToast} />
+                )}
+            </Modal>
+        </>
     );
 };
 
