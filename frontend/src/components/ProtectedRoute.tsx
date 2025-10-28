@@ -1,6 +1,6 @@
 import React from 'react';
 import { useSelector } from 'react-redux';
-import { Navigate } from 'react-router-dom';
+import { Navigate, useLocation, Link } from 'react-router-dom';
 import type { RootState } from '../store';
 
 interface ProtectedRouteProps {
@@ -16,11 +16,12 @@ const ProtectedRoute: React.FC<ProtectedRouteProps> = ({
     requirePermission,
     fallback,
 }) => {
+    const location = useLocation();
     const { isAuthenticated, isGuest, permissions } = useSelector((state: RootState) => state.auth);
 
     // Check authentication requirement
     if (requireAuth && (isGuest || !isAuthenticated)) {
-        return fallback || <Navigate to="/" replace />;
+        return fallback || <Navigate to="/login" state={{ from: location }} replace />;
     }
 
     // Check permission requirement
@@ -46,20 +47,22 @@ const ProtectedRoute: React.FC<ProtectedRouteProps> = ({
                             </p>
                             {isGuest && (
                                 <div className="space-y-3">
-                                    <button
-                                        onClick={() => window.location.reload()}
-                                        className="w-full bg-gradient-to-r from-blue-600 to-blue-700 text-white px-6 py-3 rounded-lg font-medium hover:from-blue-700 hover:to-blue-800 transition-all duration-200 shadow-md hover:shadow-lg"
+                                    <Link
+                                        to="/register"
+                                        state={{ from: location }}
+                                        className="block w-full bg-gradient-to-r from-blue-600 to-blue-700 text-white px-6 py-3 rounded-lg font-medium hover:from-blue-700 hover:to-blue-800 transition-all duration-200 shadow-md hover:shadow-lg text-center"
                                     >
                                         Sign Up Now
-                                    </button>
+                                    </Link>
                                     <p className="text-xs text-gray-500">
                                         Already have an account?{' '}
-                                        <button
-                                            onClick={() => window.location.reload()}
+                                        <Link
+                                            to="/login"
+                                            state={{ from: location }}
                                             className="text-blue-600 hover:text-blue-700 font-medium"
                                         >
                                             Sign In
-                                        </button>
+                                        </Link>
                                     </p>
                                 </div>
                             )}
