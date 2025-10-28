@@ -1,4 +1,5 @@
 import React from 'react';
+import { getCountryFlag } from '../../utils/DummyAnalyticsData';
 
 interface CountryData {
     country: string;
@@ -13,51 +14,6 @@ interface GeographicDistributionMapProps {
 }
 
 const GeographicDistributionMap: React.FC<GeographicDistributionMapProps> = ({ data, loading = false }) => {
-    const getCountryFlag = (countryCode: string) => {
-        // Simple flag emoji mapping for common countries
-        const flagMap: { [key: string]: string } = {
-            'US': '🇺🇸',
-            'GB': '🇬🇧',
-            'CA': '🇨🇦',
-            'DE': '🇩🇪',
-            'FR': '🇫🇷',
-            'JP': '🇯🇵',
-            'AU': '🇦🇺',
-            'IN': '🇮🇳',
-            'BR': '🇧🇷',
-            'CN': '🇨🇳',
-            'RU': '🇷🇺',
-            'IT': '🇮🇹',
-            'ES': '🇪🇸',
-            'NL': '🇳🇱',
-            'SE': '🇸🇪',
-            'NO': '🇳🇴',
-            'DK': '🇩🇰',
-            'FI': '🇫🇮',
-            'CH': '🇨🇭',
-            'AT': '🇦🇹',
-            'BE': '🇧🇪',
-            'IE': '🇮🇪',
-            'PT': '🇵🇹',
-            'GR': '🇬🇷',
-            'PL': '🇵🇱',
-            'CZ': '🇨🇿',
-            'HU': '🇭🇺',
-            'SK': '🇸🇰',
-            'SI': '🇸🇮',
-            'HR': '🇭🇷',
-            'BG': '🇧🇬',
-            'RO': '🇷🇴',
-            'LT': '🇱🇹',
-            'LV': '🇱🇻',
-            'EE': '🇪🇪',
-            'MT': '🇲🇹',
-            'CY': '🇨🇾',
-            'LU': '🇱🇺'
-        };
-        return flagMap[countryCode] || '🌍';
-    };
-
     const getBarWidth = (percentage: number) => {
         return Math.max(percentage, 2); // Minimum 2% width for visibility
     };
