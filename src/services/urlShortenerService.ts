@@ -5,6 +5,7 @@ import { IDGenerator } from "./idGenerator"
 import { URLValidator, ValidationResult } from "./urlValidator"
 import { AliasChecker, AliasAvailabilityResult } from "./aliasChecker"
 import { URLCacheService, CacheOptions } from "./urlCacheService"
+import { PreferencesService } from "./preferencesService"
 import { logger } from "../config/logger"
 import { metricsService } from "./metricsService"
 import {
@@ -48,6 +49,7 @@ export class URLShortenerService {
     private idGenerator: IDGenerator
     private aliasChecker: AliasChecker
     private cacheService: URLCacheService
+    private preferencesService: PreferencesService
     private readonly baseUrl: string
     private readonly maxRetries: number = 3
     private readonly defaultIdLength: number = 7
@@ -63,6 +65,7 @@ export class URLShortenerService {
         this.idGenerator = idGenerator
         this.aliasChecker = new AliasChecker(urlRepository)
         this.cacheService = cacheService || new URLCacheService()
+        this.preferencesService = new PreferencesService()
         this.baseUrl = process.env.BASE_URL || "https://short.ly"
     }
 
@@ -87,15 +90,26 @@ export class URLShortenerService {
             const longUrlHash = this.generateUrlHash(sanitizedUrl)
 
             // Step 2: Get user preferences if user is provided
-            let duplicateStrategy: string = "generate_new"
+            let duplicateStrategy: 'generate_new' | 'reuse_existing' = "generate_new"
             let defaultExpiryDays: number | null = null
 
             if (request.userId) {
-                const userPreferences = await this.getUserPreferences(
-                    request.userId
-                )
-                duplicateStrategy = userPreferences.duplicateStrategy
-                defaultExpiryDays = userPreferences.defaultExpiryDays!
+                try {
+                    const userPreferences = await this.preferencesService.getUserPreferences(request.userId)
+                    duplicateStrategy = userPreferences.duplicateStrategy
+                    defaultExpiryDays = userPreferences.defaultExpiry
+
+                    logger.info('Applied user preferences to URL creation', {
+                        userId: request.userId,
+                        duplicateStrategy,
+                        defaultExpiryDays
+                    })
+                } catch (error) {
+                    logger.warn('Failed to load user preferences, using defaults', {
+                        userId: request.userId,
+                        error: error instanceof Error ? error.message : 'Unknown error'
+                    })
+                }
             }
 
             // Step 3: Handle custom alias if provided
@@ -172,30 +186,7 @@ export class URLShortenerService {
         }
     }
 
-    /**
-     * Get user preferences
-     */
-    private async getUserPreferences(userId?: number): Promise<{
-        duplicateStrategy: "generate_new" | "reuse_existing"
-        defaultExpiryDays: number | null
-    }> {
-        if (!userId) {
-            return {
-                duplicateStrategy: "generate_new",
-                defaultExpiryDays: null
-            }
-        }
 
-        const user: any = await this.userRepository.findById(userId)
-        if (!user) {
-            throw this.createError("USER_NOT_FOUND", "User not found")
-        }
-
-        return {
-            duplicateStrategy: user.duplicate_strategy,
-            defaultExpiryDays: user.default_expiry_days
-        }
-    }
 
     /**
      * Create URL with custom alias
@@ -246,6 +237,11 @@ export class URLShortenerService {
             shortCode: sanitizedAlias,
             userId
         })
+
+        // Send webhook notification if user has webhooks enabled
+        if (userId) {
+            await this.sendUrlCreatedNotification(userId, urlMapping)
+        }
 
         return this.buildResponse(urlMapping, false)
     }
@@ -325,6 +321,11 @@ export class URLShortenerService {
                     method: generatedId.method,
                     attempts: generatedId.attempts
                 })
+
+                // Send webhook notification if user has webhooks enabled
+                if (userId) {
+                    await this.sendUrlCreatedNotification(userId, urlMapping)
+                }
 
                 return this.buildResponse(urlMapping, false)
             } catch (error) {
@@ -688,5 +689,46 @@ export class URLShortenerService {
      */
     async clearCache(): Promise<void> {
         await this.cacheService.clearCache()
+    }
+
+    /**
+     * Send URL created webhook notification
+     */
+    private async sendUrlCreatedNotification(userId: number, urlMapping: URLMapping): Promise<void> {
+        try {
+            await this.preferencesService.sendWebhookNotification(userId, 'url.created', {
+                shortCode: urlMapping.short_code,
+                longUrl: urlMapping.long_url,
+                shortUrl: `${this.baseUrl}/${urlMapping.short_code}`,
+                isCustomAlias: urlMapping.is_custom_alias,
+                expiresAt: urlMapping.expires_at,
+                userId: urlMapping.user_id
+            })
+        } catch (error) {
+            logger.warn('Failed to send URL created notification', {
+                userId,
+                shortCode: urlMapping.short_code,
+                error: error instanceof Error ? error.message : 'Unknown error'
+            })
+        }
+    }
+
+    /**
+     * Send URL deleted webhook notification
+     */
+    async sendUrlDeletedNotification(userId: number, shortCode: string): Promise<void> {
+        try {
+            await this.preferencesService.sendWebhookNotification(userId, 'url.deleted', {
+                shortCode,
+                deletedAt: new Date().toISOString(),
+                userId
+            })
+        } catch (error) {
+            logger.warn('Failed to send URL deleted notification', {
+                userId,
+                shortCode,
+                error: error instanceof Error ? error.message : 'Unknown error'
+            })
+        }
     }
 }
