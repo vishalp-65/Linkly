@@ -407,4 +407,29 @@ export class UserRepository {
             return false;
         }
     }
+
+
+
+    /**
+         * Find all users
+         */
+    async findAll(): Promise<User[]> {
+        const query = `
+            SELECT user_id as "userId", email, first_name as "firstName", last_name as "lastName", 
+                   google_id as "googleId", avatar_url as "avatarUrl", email_verified as "emailVerified",
+                   is_active as "isActive", role, created_at as "createdAt", 
+                   updated_at as "updatedAt", last_login_at as "lastLoginAt"
+            FROM users 
+            WHERE is_active = TRUE
+            ORDER BY created_at DESC
+        `;
+
+        try {
+            const result = await db.query(query);
+            return result.rows;
+        } catch (error) {
+            logger.error('Error finding all users', { error });
+            throw error;
+        }
+    }
 }
