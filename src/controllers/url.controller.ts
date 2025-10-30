@@ -318,6 +318,19 @@ export class UrlController {
                 throw ApiError.internal("Failed to delete the URL")
             }
 
+            // Send webhook notification
+            try {
+                await this.urlShortenerService.sendUrlDeletedNotification(userId, shortCode)
+            } catch (notificationError) {
+                logger.warn("Failed to send delete notification", {
+                    shortCode,
+                    error:
+                        notificationError instanceof Error
+                            ? notificationError.message
+                            : "Unknown error"
+                })
+            }
+
             // Invalidate cache
             try {
                 await this.cacheService.removeCachedUrlMapping(shortCode)
