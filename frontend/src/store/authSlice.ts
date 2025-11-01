@@ -218,6 +218,39 @@ const authSlice = createSlice({
         }
       )
 
+      // Update Profile
+      .addMatcher(api.endpoints.updateProfile.matchFulfilled, (state, action) => {
+        state.user = action.payload.data.user;
+        state.error = null;
+      })
+      .addMatcher(api.endpoints.updateProfile.matchRejected, (state, action: any) => {
+        state.error = action.payload?.data?.message || 'Failed to update profile';
+      })
+
+      // Change Password
+      .addMatcher(api.endpoints.changePassword.matchFulfilled, (state) => {
+        state.error = null;
+      })
+      .addMatcher(api.endpoints.changePassword.matchRejected, (state, action: any) => {
+        state.error = action.payload?.data?.message || 'Failed to change password';
+      })
+
+      // Request Password Reset
+      .addMatcher(api.endpoints.requestPasswordReset.matchFulfilled, (state) => {
+        state.error = null;
+      })
+      .addMatcher(api.endpoints.requestPasswordReset.matchRejected, (state, action: any) => {
+        state.error = action.payload?.data?.message || 'Failed to request password reset';
+      })
+
+      // Confirm Password Reset
+      .addMatcher(api.endpoints.confirmPasswordReset.matchFulfilled, (state) => {
+        state.error = null;
+      })
+      .addMatcher(api.endpoints.confirmPasswordReset.matchRejected, (state, action: any) => {
+        state.error = action.payload?.data?.message || 'Failed to reset password';
+      })
+
       // Handle 401 errors
       .addMatcher(
         (action) =>

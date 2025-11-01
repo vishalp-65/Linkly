@@ -72,6 +72,7 @@ export interface URLItem extends BaseEntity {
     user_id?: number;
 }
 
+
 /** Backward-compatible alias for legacy code */
 export type URLMapping = URLItem;
 
