@@ -58,7 +58,13 @@ const Navbar: React.FC = () => {
     );
 
     const isActiveRoute = useCallback(
-        (path: string) => location.pathname === path,
+        (path: string) => {
+            // Special handling for analytics route
+            if (path === '/analytics') {
+                return location.pathname === '/analytics' || location.pathname.startsWith('/analytics/');
+            }
+            return location.pathname === path;
+        },
         [location.pathname]
     );
 

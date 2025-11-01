@@ -1,50 +1,63 @@
 import React, { useState } from 'react';
 import { Card, Button, Input, FormField, Modal } from '../common';
 import { useToast } from '../../contexts/ToastContext';
+import { useSelector } from 'react-redux';
+import type { RootState } from '../../store';
+import { useChangePasswordMutation } from '../../services/api';
+// FontAwesome icons are loaded globally via CSS
 
-interface UserAccount {
-    id: string;
-    email: string;
-    createdAt: string;
-    totalUrls: number;
-    totalClicks: number;
-    lastLogin: string;
+// Types
+interface EmailForm {
+    newEmail: string;
+    confirmEmail: string;
+    currentPassword: string;
 }
+
+interface PasswordForm {
+    currentPassword: string;
+    newPassword: string;
+    confirmPassword: string;
+}
+
+interface DeleteForm {
+    confirmText: string;
+    password: string;
+}
+
+// Constants
+const PASSWORD_MIN_LENGTH = 8;
+const DELETE_CONFIRMATION_TEXT = 'DELETE';
 
 const AccountSettings: React.FC = () => {
     const { showToast } = useToast();
+    const { user } = useSelector((state: RootState) => state.auth);
+    const [changePassword] = useChangePasswordMutation();
+
+    // Modal states
     const [isEmailModalOpen, setIsEmailModalOpen] = useState(false);
     const [isPasswordModalOpen, setIsPasswordModalOpen] = useState(false);
     const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false);
     const [isLoading, setIsLoading] = useState(false);
 
-    // Mock user data - in real app, this would come from API
-    const [userAccount] = useState<UserAccount>({
-        id: '1',
-        email: 'user@example.com',
-        createdAt: '2024-01-15T10:30:00Z',
-        totalUrls: 156,
-        totalClicks: 12847,
-        lastLogin: '2024-11-02T14:22:00Z'
-    });
-
-    const [emailForm, setEmailForm] = useState({
+    // Form states
+    const [emailForm, setEmailForm] = useState<EmailForm>({
         newEmail: '',
         confirmEmail: '',
         currentPassword: ''
     });
 
-    const [passwordForm, setPasswordForm] = useState({
+    const [passwordForm, setPasswordForm] = useState<PasswordForm>({
         currentPassword: '',
         newPassword: '',
         confirmPassword: ''
     });
 
-    const [deleteForm, setDeleteForm] = useState({
+    const [deleteForm, setDeleteForm] = useState<DeleteForm>({
         confirmText: '',
         password: ''
     });
 
+    // Utility functions
     const formatDate = (dateString: string) => {
         return new Date(dateString).toLocaleDateString('en-US', {
             year: 'numeric',
@@ -55,6 +68,19 @@ const AccountSettings: React.FC = () => {
         });
     };
 
+    const resetEmailForm = () => {
+        setEmailForm({ newEmail: '', confirmEmail: '', currentPassword: '' });
+    };
+
+    const resetPasswordForm = () => {
+        setPasswordForm({ currentPassword: '', newPassword: '', confirmPassword: '' });
+    };
+
+    const resetDeleteForm = () => {
+        setDeleteForm({ confirmText: '', password: '' });
+    };
+
+    // Email update handler
     const handleEmailUpdate = async (e: React.FormEvent) => {
         e.preventDefault();
 
@@ -65,11 +91,10 @@ const AccountSettings: React.FC = () => {
 
         setIsLoading(true);
         try {
-            // API call would go here
-            await new Promise(resolve => setTimeout(resolve, 1000)); // Simulate API call
-            showToast({ message: 'Email updated successfully', type: 'success' });
+            await new Promise(resolve => setTimeout(resolve, 1000));
+            showToast({ message: 'Email update not implemented yet', type: 'error' });
             setIsEmailModalOpen(false);
-            setEmailForm({ newEmail: '', confirmEmail: '', currentPassword: '' });
+            resetEmailForm();
         } catch (error) {
             showToast({ message: 'Failed to update email', type: 'error' });
         } finally {
@@ -77,6 +102,7 @@ const AccountSettings: React.FC = () => {
         }
     };
 
+    // Password change handler
     const handlePasswordChange = async (e: React.FormEvent) => {
         e.preventDefault();
 
@@ -85,40 +111,51 @@ const AccountSettings: React.FC = () => {
             return;
         }
 
-        if (passwordForm.newPassword.length < 8) {
-            showToast({ message: 'Password must be at least 8 characters long', type: 'error' });
+        if (passwordForm.newPassword.length < PASSWORD_MIN_LENGTH) {
+            showToast({
+                message: `Password must be at least ${PASSWORD_MIN_LENGTH} characters long`,
+                type: 'error'
+            });
             return;
         }
 
         setIsLoading(true);
         try {
-            // API call would go here
-            await new Promise(resolve => setTimeout(resolve, 1000)); // Simulate API call
+            await changePassword({
+                currentPassword: passwordForm.currentPassword,
+                newPassword: passwordForm.newPassword,
+            }).unwrap();
+
             showToast({ message: 'Password changed successfully', type: 'success' });
             setIsPasswordModalOpen(false);
-            setPasswordForm({ currentPassword: '', newPassword: '', confirmPassword: '' });
-        } catch (error) {
-            showToast({ message: 'Failed to change password', type: 'error' });
+            resetPasswordForm();
+        } catch (error: any) {
+            const errMsg = error?.data?.message ||
+                'Failed to change password. Please check your current password.';
+            showToast({ message: errMsg, type: 'error' });
         } finally {
             setIsLoading(false);
         }
     };
 
+    // Account deletion handler
     const handleAccountDeletion = async (e: React.FormEvent) => {
         e.preventDefault();
 
-        if (deleteForm.confirmText !== 'DELETE') {
-            showToast({ message: 'Please type DELETE to confirm', type: 'error' });
+        if (deleteForm.confirmText !== DELETE_CONFIRMATION_TEXT) {
+            showToast({
+                message: `Please type ${DELETE_CONFIRMATION_TEXT} to confirm`,
+                type: 'error'
+            });
             return;
         }
 
         setIsLoading(true);
         try {
-            // API call would go here
-            await new Promise(resolve => setTimeout(resolve, 1000)); // Simulate API call
+            await new Promise(resolve => setTimeout(resolve, 1000));
             showToast({ message: 'Account deletion initiated', type: 'success' });
             setIsDeleteModalOpen(false);
-            // In real app, would redirect to login or goodbye page
+            resetDeleteForm();
         } catch (error) {
             showToast({ message: 'Failed to delete account', type: 'error' });
         } finally {
@@ -128,98 +165,100 @@ const AccountSettings: React.FC = () => {
 
     return (
         <div className="space-y-6">
-            {/* Account Information */}
+            {/* Account Information Card */}
             <Card>
                 <div className="p-6">
-                    <h2 className="text-xl font-semibold text-gray-900 mb-6">Account Information</h2>
+                    <div className="flex items-center space-x-2 mb-6">
+                        <i className="fas fa-shield-alt text-xl text-indigo-600 dark:text-indigo-400"></i>
+                        <h2 className="text-xl font-semibold text-gray-900 dark:text-white">
+                            Account Information
+                        </h2>
+                    </div>
 
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                        <div>
-                            <label className="block text-sm font-medium text-gray-700 mb-2">
-                                Email Address
-                            </label>
-                            <div className="flex items-center justify-between">
-                                <span className="text-gray-900">{userAccount.email}</span>
-                                <Button
-                                    variant="secondary"
-                                    size="sm"
-                                    onClick={() => setIsEmailModalOpen(true)}
-                                >
-                                    Change Email
-                                </Button>
+                    <div className="space-y-6">
+                        {/* Email Section */}
+                        <div className="flex items-start justify-between p-4 bg-gray-50 dark:bg-gray-800 rounded-lg border border-gray-200 dark:border-gray-700">
+                            <div className="flex items-start space-x-3 flex-1">
+                                <i className="fas fa-envelope text-gray-500 dark:text-gray-400 mt-1"></i>
+                                <div className="flex-1">
+                                    <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+                                        Email Address
+                                    </label>
+                                    <span className="text-gray-900 dark:text-white font-mono text-sm">
+                                        {user?.email}
+                                    </span>
+                                </div>
                             </div>
+                            <Button
+                                variant="secondary"
+                                size="sm"
+                                onClick={() => setIsEmailModalOpen(true)}
+                            >
+                                Change
+                            </Button>
                         </div>
 
-                        <div>
-                            <label className="block text-sm font-medium text-gray-700 mb-2">
-                                Password
-                            </label>
-                            <div className="flex items-center justify-between">
-                                <span className="text-gray-900">••••••••</span>
-                                <Button
-                                    variant="secondary"
-                                    size="sm"
-                                    onClick={() => setIsPasswordModalOpen(true)}
-                                >
-                                    Change Password
-                                </Button>
+                        {/* Password Section */}
+                        <div className="flex items-start justify-between p-4 bg-gray-50 dark:bg-gray-800 rounded-lg border border-gray-200 dark:border-gray-700">
+                            <div className="flex items-start space-x-3 flex-1">
+                                <i className="fas fa-lock text-gray-500 dark:text-gray-400 mt-1"></i>
+                                <div className="flex-1">
+                                    <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+                                        Password
+                                    </label>
+                                    <span className="text-gray-900 dark:text-white font-mono text-sm">
+                                        ••••••••••••
+                                    </span>
+                                </div>
                             </div>
+                            <Button
+                                variant="secondary"
+                                size="sm"
+                                onClick={() => setIsPasswordModalOpen(true)}
+                            >
+                                Change
+                            </Button>
                         </div>
 
-                        <div>
-                            <label className="block text-sm font-medium text-gray-700 mb-2">
-                                Account Created
-                            </label>
-                            <span className="text-gray-900">{formatDate(userAccount.createdAt)}</span>
-                        </div>
-
-                        <div>
-                            <label className="block text-sm font-medium text-gray-700 mb-2">
-                                Last Login
-                            </label>
-                            <span className="text-gray-900">{formatDate(userAccount.lastLogin)}</span>
+                        {/* Account Created Section */}
+                        <div className="flex items-start space-x-3 p-4 bg-gray-50 dark:bg-gray-800 rounded-lg border border-gray-200 dark:border-gray-700">
+                            <i className="fas fa-calendar text-gray-500 dark:text-gray-400 mt-1"></i>
+                            <div>
+                                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+                                    Account Created
+                                </label>
+                                <span className="text-gray-900 dark:text-white text-sm">
+                                    {formatDate(user?.createdAt!)}
+                                </span>
+                            </div>
                         </div>
                     </div>
                 </div>
             </Card>
 
-            {/* Account Statistics */}
+            {/* Danger Zone Card */}
             <Card>
                 <div className="p-6">
-                    <h2 className="text-xl font-semibold text-gray-900 mb-6">Account Statistics</h2>
-
-                    <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-                        <div className="text-center p-4 bg-blue-50 rounded-lg">
-                            <div className="text-3xl font-bold text-blue-600">{userAccount.totalUrls.toLocaleString()}</div>
-                            <div className="text-sm text-blue-800 mt-1">Total URLs Created</div>
-                        </div>
-
-                        <div className="text-center p-4 bg-green-50 rounded-lg">
-                            <div className="text-3xl font-bold text-green-600">{userAccount.totalClicks.toLocaleString()}</div>
-                            <div className="text-sm text-green-800 mt-1">Total Clicks</div>
-                        </div>
-
-                        <div className="text-center p-4 bg-purple-50 rounded-lg">
-                            <div className="text-3xl font-bold text-purple-600">
-                                {userAccount.totalUrls > 0 ? Math.round(userAccount.totalClicks / userAccount.totalUrls) : 0}
-                            </div>
-                            <div className="text-sm text-purple-800 mt-1">Average Clicks per URL</div>
-                        </div>
+                    <div className="flex items-center space-x-2 mb-4">
+                        <i className="fas fa-exclamation-triangle text-xl text-red-600 dark:text-red-400"></i>
+                        <h2 className="text-xl font-semibold text-red-600 dark:text-red-400">
+                            Danger Zone
+                        </h2>
                     </div>
-                </div>
-            </Card>
 
-            {/* Danger Zone */}
-            <Card>
-                <div className="p-6">
-                    <h2 className="text-xl font-semibold text-red-600 mb-4">Danger Zone</h2>
-                    <p className="text-gray-600 mb-4">
-                        Once you delete your account, there is no going back. Please be certain.
-                    </p>
+                    <div className="bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded-lg p-4 mb-4">
+                        <p className="text-sm text-red-800 dark:text-red-200">
+                            Once you delete your account, there is no going back. Please be certain.
+                            All your data will be permanently removed.
+                        </p>
+                    </div>
+
                     <Button
                         variant="danger"
                         onClick={() => setIsDeleteModalOpen(true)}
+                        className="w-full sm:w-auto"
                     >
+                        <i className="fas fa-trash-alt mr-2"></i>
                         Delete Account
                     </Button>
                 </div>
@@ -228,16 +267,28 @@ const AccountSettings: React.FC = () => {
             {/* Email Update Modal */}
             <Modal
                 isOpen={isEmailModalOpen}
-                onClose={() => setIsEmailModalOpen(false)}
+                onClose={() => {
+                    setIsEmailModalOpen(false);
+                    resetEmailForm();
+                }}
                 title="Change Email Address"
                 size="md"
             >
                 <form onSubmit={handleEmailUpdate} className="space-y-4">
+                    <div className="bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800 rounded-lg p-3 mb-4">
+                        <p className="text-sm text-blue-800 dark:text-blue-200">
+                            A verification email will be sent to your new email address.
+                        </p>
+                    </div>
+
                     <FormField label="New Email Address" required>
                         <Input
                             type="email"
                             value={emailForm.newEmail}
-                            onChange={(e) => setEmailForm(prev => ({ ...prev, newEmail: e.target.value }))}
+                            onChange={(e) => setEmailForm(prev => ({
+                                ...prev,
+                                newEmail: e.target.value
+                            }))}
                             placeholder="Enter new email address"
                             required
                         />
@@ -247,7 +298,10 @@ const AccountSettings: React.FC = () => {
                         <Input
                             type="email"
                             value={emailForm.confirmEmail}
-                            onChange={(e) => setEmailForm(prev => ({ ...prev, confirmEmail: e.target.value }))}
+                            onChange={(e) => setEmailForm(prev => ({
+                                ...prev,
+                                confirmEmail: e.target.value
+                            }))}
                             placeholder="Confirm new email address"
                             required
                         />
@@ -257,7 +311,10 @@ const AccountSettings: React.FC = () => {
                         <Input
                             type="password"
                             value={emailForm.currentPassword}
-                            onChange={(e) => setEmailForm(prev => ({ ...prev, currentPassword: e.target.value }))}
+                            onChange={(e) => setEmailForm(prev => ({
+                                ...prev,
+                                currentPassword: e.target.value
+                            }))}
                             placeholder="Enter current password"
                             required
                         />
@@ -267,14 +324,14 @@ const AccountSettings: React.FC = () => {
                         <Button
                             type="button"
                             variant="secondary"
-                            onClick={() => setIsEmailModalOpen(false)}
+                            onClick={() => {
+                                setIsEmailModalOpen(false);
+                                resetEmailForm();
+                            }}
                         >
                             Cancel
                         </Button>
-                        <Button
-                            type="submit"
-                            loading={isLoading}
-                        >
+                        <Button type="submit" loading={isLoading}>
                             Update Email
                         </Button>
                     </div>
@@ -284,16 +341,35 @@ const AccountSettings: React.FC = () => {
             {/* Password Change Modal */}
             <Modal
                 isOpen={isPasswordModalOpen}
-                onClose={() => setIsPasswordModalOpen(false)}
+                onClose={() => {
+                    setIsPasswordModalOpen(false);
+                    resetPasswordForm();
+                }}
                 title="Change Password"
                 size="md"
             >
                 <form onSubmit={handlePasswordChange} className="space-y-4">
+                    <div className="bg-amber-50 dark:bg-amber-900/20 border border-amber-200 dark:border-amber-800 rounded-lg p-3 mb-4">
+                        <div className="flex items-start space-x-2">
+                            <i className="fas fa-check-circle text-amber-600 dark:text-amber-400 mt-0.5"></i>
+                            <div className="text-sm text-amber-800 dark:text-amber-200">
+                                <p className="font-medium mb-1">Password Requirements:</p>
+                                <ul className="list-disc list-inside space-y-1">
+                                    <li>At least {PASSWORD_MIN_LENGTH} characters long</li>
+                                    <li>Mix of letters, numbers, and symbols recommended</li>
+                                </ul>
+                            </div>
+                        </div>
+                    </div>
+
                     <FormField label="Current Password" required>
                         <Input
                             type="password"
                             value={passwordForm.currentPassword}
-                            onChange={(e) => setPasswordForm(prev => ({ ...prev, currentPassword: e.target.value }))}
+                            onChange={(e) => setPasswordForm(prev => ({
+                                ...prev,
+                                currentPassword: e.target.value
+                            }))}
                             placeholder="Enter current password"
                             required
                         />
@@ -303,10 +379,13 @@ const AccountSettings: React.FC = () => {
                         <Input
                             type="password"
                             value={passwordForm.newPassword}
-                            onChange={(e) => setPasswordForm(prev => ({ ...prev, newPassword: e.target.value }))}
-                            placeholder="Enter new password (min 8 characters)"
+                            onChange={(e) => setPasswordForm(prev => ({
+                                ...prev,
+                                newPassword: e.target.value
+                            }))}
+                            placeholder={`Enter new password (min ${PASSWORD_MIN_LENGTH} characters)`}
                             required
-                            minLength={8}
+                            minLength={PASSWORD_MIN_LENGTH}
                         />
                     </FormField>
 
@@ -314,7 +393,10 @@ const AccountSettings: React.FC = () => {
                         <Input
                             type="password"
                             value={passwordForm.confirmPassword}
-                            onChange={(e) => setPasswordForm(prev => ({ ...prev, confirmPassword: e.target.value }))}
+                            onChange={(e) => setPasswordForm(prev => ({
+                                ...prev,
+                                confirmPassword: e.target.value
+                            }))}
                             placeholder="Confirm new password"
                             required
                         />
@@ -324,14 +406,14 @@ const AccountSettings: React.FC = () => {
                         <Button
                             type="button"
                             variant="secondary"
-                            onClick={() => setIsPasswordModalOpen(false)}
+                            onClick={() => {
+                                setIsPasswordModalOpen(false);
+                                resetPasswordForm();
+                            }}
                         >
                             Cancel
                         </Button>
-                        <Button
-                            type="submit"
-                            loading={isLoading}
-                        >
+                        <Button type="submit" loading={isLoading}>
                             Change Password
                         </Button>
                     </div>
@@ -341,27 +423,28 @@ const AccountSettings: React.FC = () => {
             {/* Account Deletion Modal */}
             <Modal
                 isOpen={isDeleteModalOpen}
-                onClose={() => setIsDeleteModalOpen(false)}
+                onClose={() => {
+                    setIsDeleteModalOpen(false);
+                    resetDeleteForm();
+                }}
                 title="Delete Account"
                 size="md"
             >
                 <div className="space-y-4">
-                    <div className="bg-red-50 border border-red-200 rounded-md p-4">
+                    <div className="bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded-lg p-4">
                         <div className="flex">
                             <div className="flex-shrink-0">
-                                <svg className="h-5 w-5 text-red-400" viewBox="0 0 20 20" fill="currentColor">
-                                    <path fillRule="evenodd" d="M8.257 3.099c.765-1.36 2.722-1.36 3.486 0l5.58 9.92c.75 1.334-.213 2.98-1.742 2.98H4.42c-1.53 0-2.493-1.646-1.743-2.98l5.58-9.92zM11 13a1 1 0 11-2 0 1 1 0 012 0zm-1-8a1 1 0 00-1 1v3a1 1 0 002 0V6a1 1 0 00-1-1z" clipRule="evenodd" />
-                                </svg>
+                                <i className="fas fa-exclamation-triangle text-red-600 dark:text-red-400"></i>
                             </div>
                             <div className="ml-3">
-                                <h3 className="text-sm font-medium text-red-800">
+                                <h3 className="text-sm font-medium text-red-800 dark:text-red-200">
                                     This action cannot be undone
                                 </h3>
-                                <div className="mt-2 text-sm text-red-700">
-                                    <p>
+                                <div className="mt-2 text-sm text-red-700 dark:text-red-300">
+                                    <p className="mb-2">
                                         This will permanently delete your account and all associated data, including:
                                     </p>
-                                    <ul className="list-disc list-inside mt-2">
+                                    <ul className="list-disc list-inside space-y-1">
                                         <li>All shortened URLs</li>
                                         <li>Analytics data</li>
                                         <li>Account preferences</li>
@@ -374,15 +457,18 @@ const AccountSettings: React.FC = () => {
 
                     <form onSubmit={handleAccountDeletion} className="space-y-4">
                         <FormField
-                            label="Type DELETE to confirm"
+                            label={`Type "${DELETE_CONFIRMATION_TEXT}" to confirm`}
                             required
                             helperText="This confirmation is required to proceed with account deletion"
                         >
                             <Input
                                 type="text"
                                 value={deleteForm.confirmText}
-                                onChange={(e) => setDeleteForm(prev => ({ ...prev, confirmText: e.target.value }))}
-                                placeholder="Type DELETE"
+                                onChange={(e) => setDeleteForm(prev => ({
+                                    ...prev,
+                                    confirmText: e.target.value
+                                }))}
+                                placeholder={`Type ${DELETE_CONFIRMATION_TEXT}`}
                                 required
                             />
                         </FormField>
@@ -391,17 +477,23 @@ const AccountSettings: React.FC = () => {
                             <Input
                                 type="password"
                                 value={deleteForm.password}
-                                onChange={(e) => setDeleteForm(prev => ({ ...prev, password: e.target.value }))}
+                                onChange={(e) => setDeleteForm(prev => ({
+                                    ...prev,
+                                    password: e.target.value
+                                }))}
                                 placeholder="Enter your password"
                                 required
                             />
                         </FormField>
 
-                        <div className="flex justify-end space-x-3 pt-4">
+                        <div className="flex justify-end space-x-3 pt-4 border-t dark:border-gray-700">
                             <Button
                                 type="button"
                                 variant="secondary"
-                                onClick={() => setIsDeleteModalOpen(false)}
+                                onClick={() => {
+                                    setIsDeleteModalOpen(false);
+                                    resetDeleteForm();
+                                }}
                             >
                                 Cancel
                             </Button>
@@ -410,6 +502,7 @@ const AccountSettings: React.FC = () => {
                                 variant="danger"
                                 loading={isLoading}
                             >
+                                <i className="fas fa-trash-alt mr-2"></i>
                                 Delete Account
                             </Button>
                         </div>
