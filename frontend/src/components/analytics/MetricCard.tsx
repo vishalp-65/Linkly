@@ -21,39 +21,33 @@ const MetricCard: React.FC<MetricCardProps> = ({
 }) => {
     const formatValue = (val: string | number): string => {
         if (typeof val === 'number') {
-            if (val >= 1000000) {
-                return `${(val / 1000000).toFixed(1)}M`;
-            } else if (val >= 1000) {
-                return `${(val / 1000).toFixed(1)}K`;
-            }
+            if (val >= 1000000) return `${(val / 1000000).toFixed(1)}M`;
+            if (val >= 1000) return `${(val / 1000).toFixed(1)}K`;
             return val.toLocaleString();
         }
         return val;
     };
 
-    const getChangeColor = () => {
-        switch (changeType) {
-            case 'positive':
-                return 'text-green-600';
-            case 'negative':
-                return 'text-red-600';
-            default:
-                return 'text-gray-600';
-        }
+    const changeColorMap = {
+        positive: 'text-green-600 dark:text-green-400',
+        negative: 'text-red-600 dark:text-red-400',
+        neutral: 'text-gray-600 dark:text-gray-400'
     };
 
-    const getChangeIcon = () => {
+    const ChangeIcon = () => {
         if (!change) return null;
 
+        const iconClass = "w-3 h-3";
         if (changeType === 'positive') {
             return (
-                <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <svg className={iconClass} fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M7 17l9.2-9.2M17 17V7H7" />
                 </svg>
             );
-        } else if (changeType === 'negative') {
+        }
+        if (changeType === 'negative') {
             return (
-                <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <svg className={iconClass} fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 7l-9.2 9.2M7 7v10h10" />
                 </svg>
             );
@@ -63,43 +57,43 @@ const MetricCard: React.FC<MetricCardProps> = ({
 
     if (loading) {
         return (
-            <div className="bg-white rounded-xl shadow-lg border border-gray-100 p-6 animate-pulse">
+            <div className="bg-white dark:bg-gray-800 rounded-xl shadow-lg border border-gray-100 dark:border-gray-700 p-6 animate-pulse">
                 <div className="flex items-center justify-between mb-4">
-                    <div className="h-4 bg-gray-200 rounded w-24"></div>
-                    <div className="w-8 h-8 bg-gray-200 rounded-lg"></div>
+                    <div className="h-4 bg-gray-200 dark:bg-gray-700 rounded w-24"></div>
+                    <div className="w-8 h-8 bg-gray-200 dark:bg-gray-700 rounded-lg"></div>
                 </div>
-                <div className="h-8 bg-gray-200 rounded w-20 mb-2"></div>
-                <div className="h-3 bg-gray-200 rounded w-16"></div>
+                <div className="h-8 bg-gray-200 dark:bg-gray-700 rounded w-20 mb-2"></div>
+                <div className="h-3 bg-gray-200 dark:bg-gray-700 rounded w-16"></div>
             </div>
         );
     }
 
     return (
-        <div className="bg-white rounded-xl shadow-lg border border-gray-100 p-6 hover:shadow-xl transition-all duration-300 group">
+        <div className="bg-white dark:bg-gray-800 rounded-xl shadow-lg border border-gray-100 dark:border-gray-700 p-6 hover:shadow-xl transition-all duration-300 group">
             <div className="flex items-center justify-between mb-4">
-                <h3 className="text-sm font-medium text-gray-500 truncate">{title}</h3>
+                <h3 className="text-sm font-medium text-gray-500 dark:text-gray-400 truncate">{title}</h3>
                 {icon && (
-                    <div className="flex-shrink-0 p-2 bg-gray-50 rounded-lg group-hover:bg-gray-100 transition-colors">
+                    <div className="flex-shrink-0 p-2 bg-gray-50 dark:bg-gray-700 rounded-lg group-hover:bg-gray-100 dark:group-hover:bg-gray-600 transition-colors">
                         {icon}
                     </div>
                 )}
             </div>
 
             <div className="space-y-2">
-                <div className="text-2xl font-bold text-gray-900">
+                <div className="text-2xl font-bold text-gray-900 dark:text-white">
                     {formatValue(value)}
                 </div>
 
                 <div className="flex items-center justify-between">
                     {change && (
-                        <div className={`flex items-center gap-1 text-xs font-medium ${getChangeColor()}`}>
-                            {getChangeIcon()}
+                        <div className={`flex items-center gap-1 text-xs font-medium ${changeColorMap[changeType]}`}>
+                            <ChangeIcon />
                             <span>{change}</span>
                         </div>
                     )}
 
                     {subtitle && (
-                        <div className="text-xs text-gray-500 truncate">
+                        <div className="text-xs text-gray-500 dark:text-gray-400 truncate">
                             {subtitle}
                         </div>
                     )}
