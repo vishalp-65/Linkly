@@ -6,6 +6,10 @@ import { URLValidator, ValidationResult } from './urlValidator';
 import { AliasChecker, AliasAvailabilityResult } from './aliasChecker';
 import { URLCacheService, CacheOptions } from './urlCacheService';
 import { logger } from '../config/logger';
+import { metricsService } from './metricsService';
+import { tracingService } from './tracingService';
+import { addBusinessContext, createChildSpan } from '../middleware/tracingMiddleware';
+import { SpanKind, SpanStatusCode } from '@opentelemetry/api';
 import { URLMapping, CreateURLMappingInput, User } from '../types/database';
 
 /**
@@ -60,12 +64,37 @@ export class URLShortenerService {
      * Create a shortened URL with duplicate handling
      */
     async createShortUrl(request: CreateUrlRequest): Promise<CreateUrlResponse> {
+        const startTime = Date.now();
+
+        // Add business context to current span
+        addBusinessContext({
+            operation: 'create_short_url',
+            userId: request.userId,
+        });
+
         try {
             // Step 1: Validate the long URL
+            const validationSpan = createChildSpan('url.validate', {
+                'url_shortener.url_length': request.longUrl.length,
+                'url_shortener.has_custom_alias': !!request.customAlias,
+            });
+
             const validation = URLValidator.validateUrl(request.longUrl);
+
             if (!validation.isValid) {
+                validationSpan.setStatus({
+                    code: SpanStatusCode.ERROR,
+                    message: validation.error || 'Invalid URL format',
+                });
+                validationSpan.end();
+
+                const duration = Date.now() - startTime;
+                metricsService.recordUrlCreation('validation_failed', 'error', duration);
                 throw this.createError('INVALID_URL', validation.error || 'Invalid URL format');
             }
+
+            validationSpan.setStatus({ code: SpanStatusCode.OK });
+            validationSpan.end();
 
             const sanitizedUrl = validation.sanitizedUrl!;
             const longUrlHash = this.generateUrlHash(sanitizedUrl);
@@ -105,6 +134,8 @@ export class URLShortenerService {
                         longUrlHash,
                     });
 
+                    const duration = Date.now() - startTime;
+                    metricsService.recordUrlCreation('reuse_existing', 'success', duration);
                     return this.buildResponse(existingUrl, true);
                 }
             }
@@ -118,9 +149,18 @@ export class URLShortenerService {
             );
 
         } catch (error) {
+            const duration = Date.now() - startTime;
+
             if (error instanceof Error && 'code' in error) {
+                // Record metrics for known errors
+                metricsService.recordUrlCreation('known_error', 'error', duration);
+                metricsService.recordError('url_creation_error', 'url_shortener_service');
                 throw error; // Re-throw our custom errors
             }
+
+            // Record metrics for unknown errors
+            metricsService.recordUrlCreation('unknown_error', 'error', duration);
+            metricsService.recordError('url_creation_unknown_error', 'url_shortener_service');
 
             logger.error('Failed to create short URL', {
                 longUrl: request.longUrl.substring(0, 100), // Log only first 100 chars
@@ -175,6 +215,7 @@ export class URLShortenerService {
             longUrlHash,
         });
 
+        // Note: Duration tracking is handled in the main createShortUrl method
         return this.buildResponse(urlMapping, false);
     }
 
@@ -227,6 +268,7 @@ export class URLShortenerService {
                     longUrlHash,
                 });
 
+                // Note: Duration tracking is handled in the main createShortUrl method
                 return this.buildResponse(urlMapping, false);
 
             } catch (error) {

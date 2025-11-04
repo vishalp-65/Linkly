@@ -3,6 +3,7 @@ import { URLRepository } from '../repositories/URLRepository';
 import { URLCacheService } from './urlCacheService';
 import { LRUCache } from './lruCache';
 import { logger } from '../config/logger';
+import { metricsService } from './metricsService';
 import { db } from '../config/database';
 
 /**
@@ -120,6 +121,10 @@ export class MultiLayerCacheService {
                 this.updateStats();
 
                 const latency = Date.now() - startTime;
+
+                // Record metrics
+                metricsService.recordCacheOperation('get', 'memory', 'hit', latency);
+
                 logger.debug('URL found in memory cache', {
                     shortCode,
                     latency,
@@ -133,9 +138,13 @@ export class MultiLayerCacheService {
             }
 
             this.stats.memory.misses++;
+            metricsService.recordCacheOperation('get', 'memory', 'miss', Date.now() - startTime);
 
             // Layer 2: Check Redis cache
+            const redisStartTime = Date.now();
             const redisResult = await this.redisCache.getCachedUrlMapping(shortCode);
+            const redisLatency = Date.now() - redisStartTime;
+
             if (redisResult) {
                 this.stats.redis.hits++;
 
@@ -145,6 +154,10 @@ export class MultiLayerCacheService {
                 this.updateStats();
 
                 const latency = Date.now() - startTime;
+
+                // Record metrics
+                metricsService.recordCacheOperation('get', 'redis', 'hit', redisLatency);
+
                 logger.debug('URL found in Redis cache', {
                     shortCode,
                     latency,
@@ -158,6 +171,7 @@ export class MultiLayerCacheService {
             }
 
             this.stats.redis.misses++;
+            metricsService.recordCacheOperation('get', 'redis', 'miss', redisLatency);
 
             // Layer 3: Check database
             const dbStartTime = Date.now();
@@ -166,6 +180,9 @@ export class MultiLayerCacheService {
 
             this.stats.database.queries++;
             this.updateDatabaseLatency(dbLatency);
+
+            // Record database query metrics
+            metricsService.recordDbQuery('select', 'url_mappings', dbResult ? 'success' : 'not_found', dbLatency);
 
             if (dbResult) {
                 // Populate both Redis and memory caches
@@ -516,6 +533,15 @@ export class MultiLayerCacheService {
 
             this.stats.overall.databaseFallbackRate =
                 (this.stats.database.queries / this.stats.overall.totalRequests) * 100;
+
+            // Update Prometheus metrics
+            metricsService.updateCacheHitRatio('memory', this.stats.overall.memoryHitRate / 100);
+            metricsService.updateCacheHitRatio('redis', this.stats.overall.redisHitRate / 100);
+
+            // Combined cache hit ratio (memory + redis hits)
+            const combinedHits = this.stats.memory.hits + this.stats.redis.hits;
+            const combinedHitRate = (combinedHits / this.stats.overall.totalRequests) * 100;
+            metricsService.updateCacheHitRatio('combined', combinedHitRate / 100);
         }
     }
 

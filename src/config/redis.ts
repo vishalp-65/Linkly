@@ -2,13 +2,13 @@ import { createClient, createCluster, RedisClientType, RedisClusterType } from '
 import { logger } from './logger';
 
 interface RedisConfig {
-    host: string;
-    port: number;
-    password?: string;
-    db: number;
-    maxRetries: number;
-    retryDelay: number;
-    clusterNodes?: string[];
+  host: string;
+  port: number;
+  password?: string;
+  db: number;
+  maxRetries: number;
+  retryDelay: number;
+  clusterNodes?: string[];
 }
 
 const config: RedisConfig = {
@@ -201,6 +201,31 @@ class RedisConnection {
       logger.error('Redis EXPIRE operation failed', {
         key,
         seconds,
+        error: error instanceof Error ? error.message : 'Unknown error',
+      });
+      throw error;
+    }
+  }
+
+  public async hgetall(key: string): Promise<Record<string, string>> {
+    try {
+      const result = await this.client.hGetAll(key);
+      return result;
+    } catch (error) {
+      logger.error('Redis hgetall failed', {
+        key,
+        error: error instanceof Error ? error.message : 'Unknown error',
+      });
+      throw error;
+    }
+  }
+
+  public async hmset(key: string, data: Record<string, any>): Promise<void> {
+    try {
+      await this.client.hSet(key, data);
+    } catch (error) {
+      logger.error('Redis hmset failed', {
+        key,
         error: error instanceof Error ? error.message : 'Unknown error',
       });
       throw error;

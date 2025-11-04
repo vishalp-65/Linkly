@@ -54,6 +54,11 @@ const envSchema = Joi.object({
   // Monitoring
   METRICS_PORT: Joi.number().port().default(9090),
   HEALTH_CHECK_TIMEOUT: Joi.number().min(1000).default(5000),
+
+  // Tracing
+  JAEGER_ENDPOINT: Joi.string().uri().optional(),
+  ZIPKIN_ENDPOINT: Joi.string().uri().optional(),
+  TRACING_ENABLED: Joi.boolean().default(true),
 }).unknown(true); // Allow unknown environment variables
 
 // Validate environment variables
@@ -135,6 +140,13 @@ export const config = {
   monitoring: {
     metricsPort: env.METRICS_PORT as number,
     healthCheckTimeout: env.HEALTH_CHECK_TIMEOUT as number,
+  },
+
+  // Tracing
+  tracing: {
+    jaegerEndpoint: env.JAEGER_ENDPOINT as string | undefined,
+    zipkinEndpoint: env.ZIPKIN_ENDPOINT as string | undefined,
+    enabled: env.TRACING_ENABLED as boolean,
   },
 };
 
