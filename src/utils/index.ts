@@ -10,3 +10,5 @@ export {
     isValidBase62,
     encodeBase62WithMinLength
 } from './base62';
+
+export { ApiError } from "./ApiError"

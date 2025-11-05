@@ -12,13 +12,7 @@ import { skipHealthCheckLogs } from './middleware/requestLogger';
 import { connectionCounterMiddleware, skipMetrics } from './middleware/metricsMiddleware';
 import { tracingMiddleware, traceContextMiddleware } from './middleware/tracingMiddleware';
 import { ExpiryManagerService } from './services/expiryManagerService';
-import { optionalAuth } from './middleware/auth';
-import { adaptiveRateLimit } from './middleware/rateLimiter';
-import healthRoutes from './routes/health';
-import redirectRoutes from './routes/redirect';
-import analyticsRoutes from './routes/analytics';
-import shortenRoutes from './routes/shorten';
-import urlRoutes from './routes/url';
+import routes from './routes'
 
 class App {
   public app: express.Application;
@@ -99,26 +93,11 @@ class App {
   }
 
   private initializeRoutes(): void {
-    // Health check routes (no auth or rate limiting)
-    this.app.use('/', healthRoutes);
-
-    // Apply optional authentication to all API routes
-    this.app.use('/api', optionalAuth);
-
-    // Apply rate limiting to all API routes
-    this.app.use('/api', adaptiveRateLimit);
-
-    // API routes
-    this.app.use('/api/v1/shorten', shortenRoutes);
-    this.app.use('/api/v1/url', urlRoutes);
-    this.app.use('/api/v1/analytics', analyticsRoutes);
-
-    // Redirect routes (must be after health and API routes but before catch-all)
-    // Apply light rate limiting to redirects to prevent abuse
-    this.app.use('/', redirectRoutes);
+    // Application routes 
+    this.app.use(routes);
 
     // Root endpoint
-    this.app.get('/', (req, res) => {
+    this.app.get('/info', (req, res) => {
       res.json({
         name: 'URL Shortener API',
         version: '1.0.0',

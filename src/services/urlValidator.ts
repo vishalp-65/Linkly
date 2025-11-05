@@ -19,7 +19,7 @@ export interface CustomAliasValidationResult {
 
 export class URLValidator {
     private static readonly MAX_URL_LENGTH = 2048;
-    private static readonly CUSTOM_ALIAS_PATTERN = /^[a-zA-Z0-9_-]{3,50}$/;
+    private static readonly CUSTOM_ALIAS_PATTERN = /^[a-zA-Z0-9_-]{3,30}$/;
 
     // Malicious domains blocklist (in production, this would be loaded from a database or external service)
     private static readonly BLOCKED_DOMAINS = new Set([
@@ -171,7 +171,7 @@ export class URLValidator {
             if (!this.CUSTOM_ALIAS_PATTERN.test(trimmedAlias)) {
                 return {
                     isValid: false,
-                    error: 'Custom alias must be 3-50 characters long and contain only letters, numbers, hyphens, and underscores',
+                    error: 'Custom alias must be 3-30 characters long and contain only letters, numbers, hyphens, and underscores',
                 };
             }
 

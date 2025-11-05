@@ -591,9 +591,9 @@ export class URLShortenerService {
     /**
      * Get cache statistics
      */
-    getCacheStats() {
-        return this.cacheService.getCacheStats();
-    }
+    // getCacheStats() {
+    //     return this.cacheService.getCacheStats();
+    // }
 
     /**
      * Warm up cache with popular URLs

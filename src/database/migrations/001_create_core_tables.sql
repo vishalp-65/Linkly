@@ -56,7 +56,7 @@ CREATE TABLE IF NOT EXISTS url_mappings (
 
 -- Create analytics_events table (partitioned by date for performance)
 CREATE TABLE IF NOT EXISTS analytics_events (
-  event_id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+  event_id UUID DEFAULT uuid_generate_v4(),
   short_code VARCHAR(10) NOT NULL,
   clicked_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
   ip_address INET,
@@ -69,8 +69,7 @@ CREATE TABLE IF NOT EXISTS analytics_events (
   browser VARCHAR(50),
   os VARCHAR(50),
   
-  -- Foreign key constraint
-  CONSTRAINT fk_analytics_short_code FOREIGN KEY (short_code) REFERENCES url_mappings(short_code) ON DELETE CASCADE
+  PRIMARY KEY (event_id, clicked_at)
 ) PARTITION BY RANGE (clicked_at);
 
 -- Create analytics_aggregates table for pre-computed statistics
@@ -148,6 +147,13 @@ BEGIN
             CREATE INDEX IF NOT EXISTS %I ON %I(clicked_at)',
             partition_name || '_clicked_at_idx', partition_name
         );
+        
+        -- Add foreign key constraint to partition
+        EXECUTE format('
+            ALTER TABLE %I ADD CONSTRAINT %I 
+            FOREIGN KEY (short_code) REFERENCES url_mappings(short_code) ON DELETE CASCADE',
+            partition_name, partition_name || '_fk_short_code'
+        );
     END LOOP;
 END $$;
 
@@ -180,6 +186,13 @@ BEGIN
     EXECUTE format('
         CREATE INDEX IF NOT EXISTS %I ON %I(clicked_at)',
         partition_name || '_clicked_at_idx', partition_name
+    );
+    
+    -- Add foreign key constraint to partition
+    EXECUTE format('
+        ALTER TABLE %I ADD CONSTRAINT %I 
+        FOREIGN KEY (short_code) REFERENCES url_mappings(short_code) ON DELETE CASCADE',
+        partition_name, partition_name || '_fk_short_code'
     );
 END;
 $$ LANGUAGE plpgsql;

@@ -22,8 +22,8 @@ class TracingService {
     initialize(): void {
         try {
             // Create resource with service information
-            const { Resource: OtelResource } = require('@opentelemetry/resources');
-            const resource = new OtelResource({
+            const { Resource } = require('@opentelemetry/resources');
+            const resource = new Resource({
                 [SemanticResourceAttributes.SERVICE_NAME]: 'url-shortener',
                 [SemanticResourceAttributes.SERVICE_VERSION]: process.env.npm_package_version || '1.0.0',
                 [SemanticResourceAttributes.SERVICE_NAMESPACE]: 'url-shortener',
