@@ -33,6 +33,7 @@ const envSchema = Joi.object({
 
   // Security
   JWT_SECRET: Joi.string().min(32).required(),
+  JWT_REFRESH_SECRET: Joi.string().min(32).required(),
   API_KEY_SECRET: Joi.string().min(32).required(),
   BCRYPT_ROUNDS: Joi.number().min(8).max(15).default(12),
 
@@ -109,8 +110,11 @@ export const config = {
   },
 
   // Security
+  jwtSecret: env.JWT_SECRET as string,
+  jwtRefreshSecret: env.JWT_REFRESH_SECRET as string,
   security: {
     jwtSecret: env.JWT_SECRET as string,
+    jwtRefreshSecret: env.JWT_REFRESH_SECRET as string,
     apiKeySecret: env.API_KEY_SECRET as string,
     bcryptRounds: env.BCRYPT_ROUNDS as number,
   },
