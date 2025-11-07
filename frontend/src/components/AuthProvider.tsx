@@ -15,12 +15,12 @@ const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
     const [refreshToken] = useRefreshTokenMutation();
 
     // Always fetch permissions (works for both guest and authenticated users)
-    const { data: permissionsData, error: permissionsError } = useGetPermissionsQuery(undefined, {
+    const { error: permissionsError } = useGetPermissionsQuery(undefined, {
         skip: !isInitialized,
     });
 
     // Only fetch profile if authenticated
-    const { data: profileData, error: profileError } = useGetProfileQuery(undefined, {
+    const { error: profileError } = useGetProfileQuery(undefined, {
         skip: !isAuthenticated || isGuest,
     });
 

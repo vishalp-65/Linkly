@@ -4,6 +4,7 @@ import { useSelector } from 'react-redux';
 import type { RootState } from '../store';
 import URLList from '../components/URLList';
 import type { URLItem } from '../types/url.types';
+import { Button } from '../components/common';
 
 const UserURLs: React.FC = () => {
     const navigate = useNavigate();
@@ -51,12 +52,21 @@ const UserURLs: React.FC = () => {
                                 </div>
                                 {!isGuest && (
                                     <div className="flex items-center space-x-2">
-                                        <button className="px-3 py-1.5 text-xs font-medium text-gray-600 bg-white border border-gray-300 rounded-md hover:bg-gray-50 transition-colors">
+                                        <Button
+                                            type='button'
+                                            variant='ghost'
+                                            size='sm'
+                                            className='w-auto text-nowrap border border-r-2 border-gray-300'
+                                        >
                                             Export
-                                        </button>
-                                        <button className="px-3 py-1.5 text-xs font-medium text-white bg-blue-600 rounded-md hover:bg-blue-700 transition-colors">
+                                        </Button>
+                                        <Button
+                                            type='button'
+                                            size='sm'
+                                            className='w-auto text-nowrap'
+                                        >
                                             Bulk Actions
-                                        </button>
+                                        </Button>
                                     </div>
                                 )}
                             </div>

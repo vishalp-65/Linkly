@@ -15,13 +15,13 @@ module.exports = {
         ],
         "@typescript-eslint/explicit-function-return-type": "off",
         "@typescript-eslint/explicit-module-boundary-types": "off",
-        "@typescript-eslint/no-explicit-any": "warn",
-        "@typescript-eslint/no-non-null-assertion": "warn",
+        "@typescript-eslint/no-explicit-any": "off",
+        "@typescript-eslint/no-non-null-assertion": "off",
 
         "@typescript-eslint/no-var-requires": "error",
 
         // General rules
-        "no-console": "warn",
+        "no-console": "off",
         "no-debugger": "error",
         "no-duplicate-imports": "error",
         "no-unused-expressions": "error",
@@ -35,7 +35,7 @@ module.exports = {
         // "comma-dangle": ["error", "always-multiline"],
         // quotes: ["error", "single", { avoidEscape: true }],
         // semi: ["error", "always"],
-        "max-len": ["warn", { code: 120 }],
+        // "max-len": ["warn", { code: 120 }],
         "no-trailing-spaces": "error",
         // "eol-last": "error",
         indent: "off"

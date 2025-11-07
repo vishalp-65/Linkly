@@ -13,7 +13,7 @@ const analyticsController = new AnalyticsController()
 
 router.get(
     "/:shortCode",
-    authMiddleware.requirePermission("canViewAnalytics"),
+    authMiddleware.authenticate,
     validateParams(urlValidators.shortCode),
     validateQuery(urlValidators.dateRange),
     asyncHandler(analyticsController.getAnalytics)
@@ -21,24 +21,29 @@ router.get(
 
 router.get(
     "/:shortCode/realtime",
-    authMiddleware.requirePermission("canViewAnalytics"),
+    authMiddleware.authenticate,
     validateParams(urlValidators.shortCode),
     asyncHandler(analyticsController.getRealtimeAnalytics)
 )
 
 router.get(
     "/global/summary",
-    authMiddleware.requirePermission("canViewAnalytics"),
+    authMiddleware.authenticate,
     validateQuery(urlValidators.dateRange),
     asyncHandler(analyticsController.getGlobalAnalytics)
 )
 
 router.post(
     "/:shortCode/invalidate-cache",
+    authMiddleware.authenticate,
     validateParams(urlValidators.shortCode),
     asyncHandler(analyticsController.invalidateCache)
 )
 
-router.get("/cache/stats", asyncHandler(analyticsController.getCacheStats))
+router.get(
+    "/cache/stats",
+    authMiddleware.authenticate,
+    asyncHandler(analyticsController.getCacheStats)
+)
 
 export default router
