@@ -1,19 +1,42 @@
-@import "tailwindcss";
+@import 'tailwindcss';
 
-/* Custom animations and styles */
-@layer utilities {
-  .animate-fade-in {
-    animation: fadeIn 0.5s ease-in-out;
-  }
-  
-  .animate-slide-up {
-    animation: slideUp 0.3s ease-out;
-  }
-  
-  .animate-bounce-subtle {
-    animation: bounceSubtle 2s infinite;
-  }
+/* Configure dark mode variant */
+@variant dark (&:where(.dark, .dark *));
+
+/* Custom theme extensions */
+@theme {
+  --color-high-contrast-50: #ffffff;
+  --color-high-contrast-100: #f8f9fa;
+  --color-high-contrast-900: #212529;
+  --color-high-contrast-950: #000000;
 }
+
+/* ========================================================================== */
+/* THEME VARIABLES                                                            */
+/* ========================================================================== */
+
+:root {
+  --bg-primary-contrast: #ffffff;
+  --bg-secondary-contrast: #f8f9fa;
+  --text-primary-contrast: #212529;
+  --text-secondary-contrast: #495057;
+  --border-primary-contrast: #dee2e6;
+  --focus-ring-color: #2563eb;
+  --focus-ring-offset: 2px;
+}
+
+.dark {
+  --bg-primary-contrast: #1f2937;
+  --bg-secondary-contrast: #111827;
+  --text-primary-contrast: #f9fafb;
+  --text-secondary-contrast: #d1d5db;
+  --border-primary-contrast: #374151;
+  --focus-ring-color: #60a5fa;
+}
+
+/* ========================================================================== */
+/* CUSTOM UTILITIES AND ANIMATIONS                                            */
+/* ========================================================================== */
 
 @keyframes fadeIn {
   from {
@@ -38,12 +61,25 @@
 }
 
 @keyframes bounceSubtle {
-  0%, 100% {
+  0%,
+  100% {
     transform: translateY(0);
   }
   50% {
     transform: translateY(-5px);
   }
+}
+
+@utility animate-fade-in {
+  animation: fadeIn 0.5s ease-in-out;
+}
+
+@utility animate-slide-up {
+  animation: slideUp 0.3s ease-out;
+}
+
+@utility animate-bounce-subtle {
+  animation: bounceSubtle 2s infinite;
 }
 
 /* Custom scrollbar */
@@ -64,18 +100,77 @@
   background: #94a3b8;
 }
 
-/* Smooth focus transitions */
-.focus-ring {
-  outline: none;
-  box-shadow: 0 0 0 2px rgba(59, 130, 246, 0.5);
-  transition: all 0.2s;
+.dark ::-webkit-scrollbar-track {
+  background: #374151;
 }
 
-/* Glass morphism effect */
+.dark ::-webkit-scrollbar-thumb {
+  background: #6b7280;
+}
+
+.dark ::-webkit-scrollbar-thumb:hover {
+  background: #9ca3af;
+}
+
+/* Focus indicators */
+*:focus-visible {
+  outline: 2px solid var(--focus-ring-color);
+  outline-offset: var(--focus-ring-offset);
+}
+
+/* Skip to main content link */
+.skip-link {
+  position: absolute;
+  top: -40px;
+  left: 6px;
+  background: var(--focus-ring-color);
+  color: white;
+  padding: 8px 12px;
+  text-decoration: none;
+  border-radius: 4px;
+  z-index: 1000;
+  transition: top 0.3s;
+  font-weight: 600;
+}
+
+.skip-link:focus {
+  top: 6px;
+}
+
+/* Screen reader only */
+.sr-only {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+  white-space: nowrap;
+  border: 0;
+}
+
+/* Reduced motion */
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+  }
+}
+
+/* Glass morphism */
 .glass {
   backdrop-filter: blur(16px) saturate(180%);
   background-color: rgba(255, 255, 255, 0.75);
   border: 1px solid rgba(209, 213, 219, 0.3);
+}
+
+.dark .glass {
+  background-color: rgba(31, 41, 55, 0.75);
+  border: 1px solid rgba(55, 65, 81, 0.3);
 }
 
 /* Gradient text */

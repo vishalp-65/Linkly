@@ -65,7 +65,7 @@ const AliasAvailabilityChecker: React.FC<AliasAvailabilityCheckerProps> = ({
         }
 
         if (reservedWords.includes(alias.toLowerCase())) {
-            setValidationError('This alias is reserved');
+            setValidationError('This alias is reserved, Try another!');
             setIsAvailable(false);
             setSuggestions([]);
             return false;
@@ -189,9 +189,9 @@ const AliasAvailabilityChecker: React.FC<AliasAvailabilityCheckerProps> = ({
     };
 
     const getHelperTextColor = (): string => {
-        if (validationError || isAvailable === false) return 'text-red-600';
-        if (isAvailable === true) return 'text-green-600';
-        if (isChecking || isFetching) return 'text-blue-600';
+        if (validationError || isAvailable === false) return 'text-red-600 dark:text-red-400';
+        if (isAvailable === true) return 'text-green-600 dark:text-green-500';
+        if (isChecking || isFetching) return 'text-blue-600 dark:text-blue-500';
         return 'text-gray-500';
     };
 
@@ -273,7 +273,7 @@ const AliasAvailabilityChecker: React.FC<AliasAvailabilityCheckerProps> = ({
                 }}
                 placeholder="my-custom-alias"
                 helperText={getHelperText()}
-                className={getHelperTextColor()}
+                helperTextClassName={getHelperTextColor()}
                 disabled={disabled}
                 rightIcon={getRightIcon()}
                 leftIcon={

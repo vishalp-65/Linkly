@@ -1,5 +1,6 @@
 import React, { useState, useRef, useEffect } from 'react';
 import DatePicker from '../common/DatePicker';
+import { presets } from '../../utils/DummyAnalyticsData';
 
 export interface DateRange {
     start: string;
@@ -23,73 +24,6 @@ const DateRangePicker: React.FC<DateRangePickerProps> = ({
     const [isOpen, setIsOpen] = useState(false);
     const [selectedPreset, setSelectedPreset] = useState<string>('custom');
     const containerRef = useRef<HTMLDivElement>(null);
-
-    // Preset date ranges
-    const presets = [
-        {
-            key: 'today',
-            label: 'Today',
-            getValue: () => {
-                const today = new Date().toISOString().split('T')[0];
-                return { start: today, end: today, label: 'Today' };
-            }
-        },
-        {
-            key: 'yesterday',
-            label: 'Yesterday',
-            getValue: () => {
-                const yesterday = new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString().split('T')[0];
-                return { start: yesterday, end: yesterday, label: 'Yesterday' };
-            }
-        },
-        {
-            key: 'last7days',
-            label: 'Last 7 days',
-            getValue: () => ({
-                start: new Date(Date.now() - 7 * 24 * 60 * 60 * 1000).toISOString().split('T')[0],
-                end: new Date().toISOString().split('T')[0],
-                label: 'Last 7 days'
-            })
-        },
-        {
-            key: 'last30days',
-            label: 'Last 30 days',
-            getValue: () => ({
-                start: new Date(Date.now() - 30 * 24 * 60 * 60 * 1000).toISOString().split('T')[0],
-                end: new Date().toISOString().split('T')[0],
-                label: 'Last 30 days'
-            })
-        },
-        {
-            key: 'last90days',
-            label: 'Last 90 days',
-            getValue: () => ({
-                start: new Date(Date.now() - 90 * 24 * 60 * 60 * 1000).toISOString().split('T')[0],
-                end: new Date().toISOString().split('T')[0],
-                label: 'Last 90 days'
-            })
-        },
-        {
-            key: 'thisMonth',
-            label: 'This month',
-            getValue: () => {
-                const now = new Date();
-                const start = new Date(now.getFullYear(), now.getMonth(), 1).toISOString().split('T')[0];
-                const end = new Date().toISOString().split('T')[0];
-                return { start, end, label: 'This month' };
-            }
-        },
-        {
-            key: 'lastMonth',
-            label: 'Last month',
-            getValue: () => {
-                const now = new Date();
-                const start = new Date(now.getFullYear(), now.getMonth() - 1, 1).toISOString().split('T')[0];
-                const end = new Date(now.getFullYear(), now.getMonth(), 0).toISOString().split('T')[0];
-                return { start, end, label: 'Last month' };
-            }
-        }
-    ];
 
     // Check if current value matches any preset
     useEffect(() => {

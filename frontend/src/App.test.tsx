@@ -4,8 +4,8 @@ import '@testing-library/jest-dom';
 import App from './App';
 
 describe('App', () => {
-  it('renders the URL Shortener heading', () => {
+  it('renders the main heading', () => {
     render(<App />);
-    expect(screen.getByText('URL Shortener')).toBeInTheDocument();
+    expect(screen.getByText('Shorten Your URLs')).toBeInTheDocument();
   });
 });

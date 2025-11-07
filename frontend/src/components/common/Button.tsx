@@ -23,10 +23,10 @@ const Button: React.FC<ButtonProps> = ({
     const baseClasses = 'inline-flex items-center justify-center font-medium rounded-md transition-all duration-200 focus:outline-none cursor-pointer focus:ring-2 focus:ring-offset-2';
 
     const variantClasses = {
-        primary: 'bg-gradient-to-r from-blue-600 to-blue-700 text-white hover:from-blue-700 hover:to-blue-800 focus:ring-blue-500 shadow-md hover:shadow-lg',
-        secondary: 'bg-gray-100 text-gray-900 hover:bg-gray-200 focus:ring-gray-500',
-        danger: 'bg-gradient-to-r from-red-600 to-red-700 text-white hover:from-red-700 hover:to-red-800 focus:ring-red-500 shadow-md hover:shadow-lg',
-        ghost: 'text-gray-600 hover:text-gray-900 hover:bg-gray-50 focus:ring-gray-500',
+        primary: 'bg-gradient-to-r from-blue-600 to-blue-700 text-white hover:from-blue-700 hover:to-blue-800 focus:ring-blue-500 shadow-md hover:shadow-lg dark:from-blue-500 dark:to-blue-600 dark:hover:from-blue-600 dark:hover:to-blue-700',
+        secondary: 'bg-gray-100 text-gray-900 hover:bg-gray-200 focus:ring-gray-500 dark:bg-gray-700 dark:text-gray-100 dark:hover:bg-gray-600',
+        danger: 'bg-gradient-to-r from-red-600 to-red-700 text-white hover:from-red-700 hover:to-red-800 focus:ring-red-500 shadow-md hover:shadow-lg dark:from-red-500 dark:to-red-600 dark:hover:from-red-600 dark:hover:to-red-700',
+        ghost: 'text-gray-600 hover:text-gray-900 hover:bg-gray-50 focus:ring-gray-500 dark:text-gray-400 dark:hover:text-gray-100 dark:hover:bg-gray-800',
     };
 
     const sizeClasses = {
@@ -47,18 +47,22 @@ const Button: React.FC<ButtonProps> = ({
         ${className}
       `}
             disabled={isDisabled}
+            aria-disabled={isDisabled}
             {...props}
         >
             {loading ? (
-                <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-current mr-2" />
+                <>
+                    <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-current mr-2" aria-hidden="true" />
+                    <span className="sr-only">Loading...</span>
+                </>
             ) : leftIcon ? (
-                <span className="mr-2">{leftIcon}</span>
+                <span className="mr-2" aria-hidden="true">{leftIcon}</span>
             ) : null}
 
             {children}
 
             {rightIcon && !loading && (
-                <span className="ml-2">{rightIcon}</span>
+                <span className="ml-2" aria-hidden="true">{rightIcon}</span>
             )}
         </button>
     );

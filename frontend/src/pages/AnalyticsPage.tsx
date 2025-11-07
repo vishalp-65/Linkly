@@ -10,6 +10,7 @@ import ReferrerTable from '../components/analytics/ReferrerTable';
 import LiveClickCounter from '../components/analytics/LiveClickCounter';
 import WebSocketStatus from '../components/analytics/WebSocketStatus';
 import DateRangePicker, { type DateRange } from '../components/analytics/DateRangePicker';
+import { clicksData, deviceData, geoData, referrerData } from '../utils/DummyAnalyticsData';
 
 interface AnalyticsPageProps { }
 
@@ -22,40 +23,7 @@ const AnalyticsPage: React.FC<AnalyticsPageProps> = () => {
     });
     const [isLoadingData, setIsLoadingData] = useState(false);
 
-    // Sample data for demonstration
-    const clicksData = Array.from({ length: 30 }, (_, i) => ({
-        date: new Date(Date.now() - (29 - i) * 24 * 60 * 60 * 1000).toISOString().split('T')[0],
-        clicks: Math.floor(Math.random() * 500) + 100,
-        uniqueVisitors: Math.floor(Math.random() * 300) + 50
-    }));
 
-    const geoData = [
-        { country: 'United States', countryCode: 'US', clicks: 4500, percentage: 36.0 },
-        { country: 'United Kingdom', countryCode: 'GB', clicks: 2100, percentage: 16.8 },
-        { country: 'Canada', countryCode: 'CA', clicks: 1800, percentage: 14.4 },
-        { country: 'Germany', countryCode: 'DE', clicks: 1200, percentage: 9.6 },
-        { country: 'France', countryCode: 'FR', clicks: 900, percentage: 7.2 },
-        { country: 'Australia', countryCode: 'AU', clicks: 700, percentage: 5.6 },
-        { country: 'Japan', countryCode: 'JP', clicks: 600, percentage: 4.8 },
-        { country: 'India', countryCode: 'IN', clicks: 700, percentage: 5.6 }
-    ];
-
-    const deviceData = [
-        { device: 'Desktop', clicks: 7500, percentage: 60.0, color: '#3b82f6' },
-        { device: 'Mobile', clicks: 3750, percentage: 30.0, color: '#10b981' },
-        { device: 'Tablet', clicks: 1250, percentage: 10.0, color: '#f59e0b' }
-    ];
-
-    const referrerData = [
-        { referrer: 'google.com', clicks: 3500, percentage: 28.0 },
-        { referrer: 'facebook.com', clicks: 2100, percentage: 16.8 },
-        { referrer: 'twitter.com', clicks: 1800, percentage: 14.4 },
-        { referrer: '(direct)', clicks: 1500, percentage: 12.0 },
-        { referrer: 'linkedin.com', clicks: 1200, percentage: 9.6 },
-        { referrer: 'reddit.com', clicks: 900, percentage: 7.2 },
-        { referrer: 'youtube.com', clicks: 800, percentage: 6.4 },
-        { referrer: 'github.com', clicks: 700, percentage: 5.6 }
-    ];
 
     const handleExport = (format: 'csv' | 'pdf') => {
         console.log(`Exporting analytics data as ${format}`);

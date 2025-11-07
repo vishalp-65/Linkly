@@ -1,42 +1,47 @@
 import { Router } from "express"
 import { AnalyticsController } from "../../controllers/analytics.controller"
-import { urlValidators } from "../../validators/url.validator"
 import { asyncHandler } from "../../middleware/errorHandler"
 import { authMiddleware } from "../../middleware/authMiddleware"
 import {
     validateParams,
     validateQuery
 } from "../../middleware/validationMiddleware"
+import analyticsValidators from "../../validators/analytics.validator"
 
 const router = Router()
 const analyticsController = new AnalyticsController()
 
+// Analytics for specific URL
 router.get(
     "/:shortCode",
     authMiddleware.authenticate,
-    validateParams(urlValidators.shortCode),
-    validateQuery(urlValidators.dateRange),
+    validateParams(analyticsValidators.shortCode),
+    validateQuery(analyticsValidators.dateRangeQuery),  // Changed from urlValidators.dateRange
     asyncHandler(analyticsController.getAnalytics)
 )
 
+// Realtime analytics
 router.get(
     "/:shortCode/realtime",
     authMiddleware.authenticate,
-    validateParams(urlValidators.shortCode),
+    validateParams(analyticsValidators.shortCode),
+    validateQuery(analyticsValidators.realtimeQuery),  // Added validation
     asyncHandler(analyticsController.getRealtimeAnalytics)
 )
 
+// Global analytics
 router.get(
     "/global/summary",
     authMiddleware.authenticate,
-    validateQuery(urlValidators.dateRange),
+    validateQuery(analyticsValidators.globalAnalyticsQuery),  // Changed from urlValidators.dateRange
     asyncHandler(analyticsController.getGlobalAnalytics)
 )
 
+// Invalidate cache
 router.post(
     "/:shortCode/invalidate-cache",
     authMiddleware.authenticate,
-    validateParams(urlValidators.shortCode),
+    validateParams(analyticsValidators.shortCode),
     asyncHandler(analyticsController.invalidateCache)
 )
 
