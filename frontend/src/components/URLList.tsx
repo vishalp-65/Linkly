@@ -369,65 +369,63 @@ const Pagination: React.FC<{
     );
 
     return (
-        <Card padding="md">
-            <div className="flex flex-col sm:flex-row items-center justify-between gap-4">
-                <div className="text-sm text-gray-700 dark:text-gray-300">
-                    Showing{' '}
-                    <strong>{(meta.currentPage - 1) * meta.pageSize + 1}</strong>{' '}
-                    to{' '}
-                    <strong>
-                        {Math.min(meta.currentPage * meta.pageSize, meta.totalItems)}
-                    </strong>{' '}
-                    of <strong>{meta.totalItems}</strong> results
-                </div>
-
-                <div className="flex items-center gap-2">
-                    <Button
-                        variant="secondary"
-                        size="sm"
-                        disabled={!meta.hasPrevPage}
-                        onClick={() => onPageChange(meta.currentPage - 1)}
-                    >
-                        <svg className="w-4 h-4 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
-                        </svg>
-                        Previous
-                    </Button>
-
-                    <div className="flex items-center gap-1">
-                        {pageNumbers.map((pageNum, idx) =>
-                            pageNum === '...' ? (
-                                <span key={`ellipsis-${idx}`} className="px-3 py-1 text-gray-400 dark:text-gray-500">
-                                    ...
-                                </span>
-                            ) : (
-                                <Button
-                                    key={pageNum}
-                                    variant={pageNum === meta.currentPage ? 'primary' : 'secondary'}
-                                    size="sm"
-                                    onClick={() => onPageChange(pageNum as number)}
-                                    className="min-w-[2.5rem]"
-                                >
-                                    {pageNum}
-                                </Button>
-                            )
-                        )}
-                    </div>
-
-                    <Button
-                        variant="secondary"
-                        size="sm"
-                        disabled={!meta.hasNextPage}
-                        onClick={() => onPageChange(meta.currentPage + 1)}
-                    >
-                        Next
-                        <svg className="w-4 h-4 ml-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
-                        </svg>
-                    </Button>
-                </div>
+        <div className="flex flex-col p-4 sm:flex-row items-center justify-between gap-4">
+            <div className="text-sm text-gray-700 dark:text-gray-300">
+                Showing{' '}
+                <strong>{(meta.currentPage - 1) * meta.pageSize + 1}</strong>{' '}
+                to{' '}
+                <strong>
+                    {Math.min(meta.currentPage * meta.pageSize, meta.totalItems)}
+                </strong>{' '}
+                of <strong>{meta.totalItems}</strong> results
             </div>
-        </Card>
+
+            <div className="flex items-center gap-2">
+                <Button
+                    variant="secondary"
+                    size="sm"
+                    disabled={!meta.hasPrevPage}
+                    onClick={() => onPageChange(meta.currentPage - 1)}
+                >
+                    <svg className="w-4 h-4 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
+                    </svg>
+                    Previous
+                </Button>
+
+                <div className="flex items-center gap-1">
+                    {pageNumbers.map((pageNum, idx) =>
+                        pageNum === '...' ? (
+                            <span key={`ellipsis-${idx}`} className="px-3 py-1 text-gray-400 dark:text-gray-500">
+                                ...
+                            </span>
+                        ) : (
+                            <Button
+                                key={pageNum}
+                                variant={pageNum === meta.currentPage ? 'primary' : 'secondary'}
+                                size="sm"
+                                onClick={() => onPageChange(pageNum as number)}
+                                className="min-w-[2.5rem]"
+                            >
+                                {pageNum}
+                            </Button>
+                        )
+                    )}
+                </div>
+
+                <Button
+                    variant="secondary"
+                    size="sm"
+                    disabled={!meta.hasNextPage}
+                    onClick={() => onPageChange(meta.currentPage + 1)}
+                >
+                    Next
+                    <svg className="w-4 h-4 ml-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
+                    </svg>
+                </Button>
+            </div>
+        </div>
     );
 });
 Pagination.displayName = 'Pagination';

@@ -6,6 +6,8 @@
   "scripts": {
     "dev": "vite",
     "build": "tsc -b && vite build",
+    "build:staging": "tsc -b && vite build --mode staging",
+    "build:production": "tsc -b && vite build --mode production",
     "lint": "eslint .",
     "lint:fix": "eslint . --fix",
     "format": "prettier --write .",
@@ -13,7 +15,9 @@
     "test": "vitest --run",
     "test:watch": "vitest",
     "test:ui": "vitest --ui",
-    "preview": "vite preview"
+    "preview": "vite preview",
+    "preview:staging": "vite preview --mode staging",
+    "preview:production": "vite preview --mode production"
   },
   "dependencies": {
     "@fortawesome/fontawesome-free": "^7.1.0",

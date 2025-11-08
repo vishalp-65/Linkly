@@ -6,6 +6,7 @@ import react from '@vitejs/plugin-react';
 export default defineConfig(({ mode }) => {
   const env = loadEnv(mode, process.cwd() + '/frontend', '');
   const enableCache = env.VITE_ENABLE_CACHE === 'true';
+  const isProduction = mode === 'production';
 
   return {
     plugins: [react()],
@@ -36,8 +37,25 @@ export default defineConfig(({ mode }) => {
       __DEV__: JSON.stringify(process.env.NODE_ENV === 'development'),
     },
     build: {
+      // Output directory
+      outDir: 'dist',
+      // Enable minification in production
+      minify: isProduction ? 'esbuild' : false,
+      // Generate source maps for debugging (hidden in production)
+      sourcemap: isProduction ? 'hidden' : true,
+      // Target modern browsers for better optimization
+      target: 'es2020',
+      // Optimize chunk size
+      chunkSizeWarningLimit: 1000,
+      // Enable asset compression
+      assetsInlineLimit: enableCache ? 4096 : 0,
+      // Optimize CSS
+      cssCodeSplit: enableCache,
+      // CSS minification
+      cssMinify: isProduction,
       rollupOptions: {
         output: enableCache ? {
+          // Manual chunk splitting for better caching
           manualChunks: {
             // Vendor chunks
             'react-vendor': ['react', 'react-dom'],
@@ -46,7 +64,7 @@ export default defineConfig(({ mode }) => {
             'charts-vendor': ['recharts'],
             'utils-vendor': ['date-fns', 'socket.io-client'],
           },
-          // Optimize asset file names
+          // Optimize asset file names with content hashing
           assetFileNames: (assetInfo) => {
             const info = assetInfo.name?.split('.') || [];
             const ext = info[info.length - 1];
@@ -67,15 +85,13 @@ export default defineConfig(({ mode }) => {
           chunkFileNames: 'assets/js/[name].js',
           entryFileNames: 'assets/js/[name].js',
         },
+        // Tree-shaking optimization
+        treeshake: isProduction ? {
+          moduleSideEffects: 'no-external',
+          propertyReadSideEffects: false,
+          unknownGlobalSideEffects: false,
+        } : false,
       },
-      // Optimize chunk size
-      chunkSizeWarningLimit: 1000,
-      // Enable asset compression
-      assetsInlineLimit: enableCache ? 4096 : 0, // Don't inline in dev
-      // Optimize CSS
-      cssCodeSplit: enableCache,
-      // Source maps for production debugging
-      sourcemap: true,
     },
   };
 });
