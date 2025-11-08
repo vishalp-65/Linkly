@@ -125,6 +125,12 @@ class WebSocketService {
             return
         }
 
+        console.log("WEBSOCKET: Client subscribing", {
+            socketId: socket.id,
+            shortCode,
+            currentSubscribers: this.connectedClients.get(shortCode)?.size || 0
+        })
+
         // Join room for this short code
         socket.join(`analytics:${shortCode}`)
 
@@ -133,6 +139,12 @@ class WebSocketService {
             this.connectedClients.set(shortCode, new Set())
         }
         this.connectedClients.get(shortCode)!.add(socket.id)
+
+        console.log("WEBSOCKET: Client subscribed successfully", {
+            socketId: socket.id,
+            shortCode,
+            totalSubscribers: this.connectedClients.get(shortCode)?.size || 0
+        })
 
         logger.info("Client subscribed to analytics", {
             socketId: socket.id,
@@ -189,25 +201,45 @@ class WebSocketService {
      */
     public emitClickEvent(event: AnalyticsClickEvent): void {
         if (!this.io) {
+            console.log("WEBSOCKET: Service not initialized")
             logger.warn("WebSocket service not initialized, cannot emit click event")
             return
         }
 
         const room = `analytics:${event.shortCode}`
+        const subscriberCount = this.connectedClients.get(event.shortCode)?.size || 0
+        const emitId = Math.random().toString(36).substring(7)
 
-        // Emit to all clients in the room
-        this.io.to(room).emit("click", {
+        console.log("WEBSOCKET: Emitting click event", {
+            emitId,
             shortCode: event.shortCode,
+            room,
+            subscriberCount,
             timestamp: event.timestamp,
             country: event.country,
             device: event.device,
             browser: event.browser,
-            referrer: event.referrer
+            stackTrace: new Error().stack?.split('\n').slice(1, 4).join('\n')
         })
 
-        logger.debug("Click event emitted", {
+        // Emit comprehensive click event to all clients in the room
+        this.io.to(room).emit("click", {
             shortCode: event.shortCode,
-            subscriberCount: this.connectedClients.get(event.shortCode)?.size || 0
+            timestamp: event.timestamp,
+            country: event.country || "Unknown",
+            device: event.device || "Unknown",
+            browser: event.browser || "Unknown",
+            referrer: event.referrer || "(direct)"
+        })
+
+        console.log("WEBSOCKET: Click event emitted to", subscriberCount, "subscribers", { emitId })
+
+        logger.debug("Click event emitted", {
+            emitId,
+            shortCode: event.shortCode,
+            subscriberCount,
+            country: event.country,
+            device: event.device
         })
     }
 
