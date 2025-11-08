@@ -4,6 +4,7 @@ import type { RootState } from '../store';
 import URLShortenerForm from '../components/URLShortenerForm';
 import Card from '../components/common/Card';
 import { useGetUserUrlsQuery } from '../services/api';
+import PageHeader from '../components/common/PageHeader';
 
 interface StatsCardProps {
     title: string;
@@ -91,12 +92,7 @@ const DashboardPage: React.FC = () => {
             </div>
 
             <div className="relative max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-                <div className="mb-8">
-                    <h1 className="text-3xl font-bold text-gray-900 dark:text-gray-100">URL Dashboard</h1>
-                    <p className="mt-2 text-gray-600 dark:text-gray-400">
-                        Manage and monitor your shortened URLs
-                    </p>
-                </div>
+                <PageHeader title='URL Dashboard' subtitle='Manage and monitor your shortened URLs' showBackButton />
 
                 <URLShortenerForm />
 
