@@ -1,5 +1,11 @@
+import dotenv from 'dotenv';
+// Load environment variables first
+dotenv.config();
+
 import { Pool, PoolConfig } from 'pg';
 import { logger } from './logger';
+import * as fs from 'fs';
+import * as path from 'path';
 
 interface DatabaseConfig extends PoolConfig {
     host: string;
@@ -13,6 +19,31 @@ interface DatabaseConfig extends PoolConfig {
     idleTimeoutMillis: number;
 }
 
+// Read SSL certificate from file or environment variable
+let sslConfig: any = false;
+if (process.env.NODE_ENV === 'production') {
+    try {
+        // Try to read from ca.pem file first
+        const caPath = path.join(__dirname, '../../ca.pem');
+        if (fs.existsSync(caPath)) {
+            const ca = fs.readFileSync(caPath, 'utf8');
+            sslConfig = { rejectUnauthorized: true, ca };
+            logger.info('Using SSL certificate from ca.pem file');
+        } else if (process.env.DB_SSL_CA) {
+            // Fallback to environment variable (handle escaped newlines)
+            const ca = process.env.DB_SSL_CA.replace(/\\n/g, '\n');
+            sslConfig = { rejectUnauthorized: true, ca };
+            logger.info('Using SSL certificate from environment variable');
+        } else {
+            logger.warn('Production mode but no SSL certificate found');
+        }
+    } catch (error) {
+        logger.error('Error loading SSL certificate', {
+            error: error instanceof Error ? error.message : 'Unknown error',
+        });
+    }
+}
+
 const config: DatabaseConfig = {
     host: process.env.DB_HOST || 'localhost',
     port: parseInt(process.env.DB_PORT || '5432'),
@@ -23,7 +54,7 @@ const config: DatabaseConfig = {
     max: parseInt(process.env.DB_POOL_MAX || '10'),
     connectionTimeoutMillis: parseInt(process.env.DB_CONNECTION_TIMEOUT || '30000'),
     idleTimeoutMillis: parseInt(process.env.DB_IDLE_TIMEOUT || '30000'),
-    ssl: process.env.NODE_ENV === 'production' ? { rejectUnauthorized: false } : false,
+    ssl: sslConfig,
 };
 
 class DatabaseConnection {

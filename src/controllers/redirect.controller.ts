@@ -17,9 +17,18 @@ export class RedirectController {
     ): Promise<void> => {
         const startTime = Date.now()
         const { shortCode } = req.params
+        const requestId = Math.random().toString(36).substring(7)
+
+        console.log("=== REDIRECT CONTROLLER CALLED ===", {
+            requestId,
+            shortCode,
+            url: req.url,
+            method: req.method,
+            userAgent: req.get("User-Agent")?.substring(0, 50),
+            referer: req.get("Referer")
+        })
 
         try {
-            console.log("REDIRECT CONTROLLER HIT")
             const result = await this.redirectService.handleRedirect(
                 req,
                 res,
@@ -27,14 +36,23 @@ export class RedirectController {
             )
             const responseTime = Date.now() - startTime
 
+            console.log("=== REDIRECT COMPLETED ===", {
+                requestId,
+                shortCode,
+                responseTime,
+                statusCode: result?.statusCode || "unknown"
+            })
+
             if (responseTime > 50) {
                 logger.warn("Slow redirect response", {
+                    requestId,
                     shortCode,
                     responseTime,
                     statusCode: result?.statusCode || "unknown"
                 })
             } else {
                 logger.debug("Redirect handled", {
+                    requestId,
                     shortCode,
                     responseTime,
                     statusCode: result?.statusCode || "unknown"
@@ -43,7 +61,14 @@ export class RedirectController {
         } catch (error) {
             const responseTime = Date.now() - startTime
 
+            console.log("=== REDIRECT FAILED ===", {
+                requestId,
+                shortCode,
+                error: error instanceof Error ? error.message : "Unknown error"
+            })
+
             logger.error("Redirect handling failed", {
+                requestId,
                 shortCode,
                 error: error instanceof Error ? error.message : "Unknown error",
                 responseTime

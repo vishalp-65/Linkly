@@ -148,7 +148,7 @@ export class AnalyticsController {
     }
 
     /**
-     * Get real-time analytics (always fresh data)
+     * Get real-time analytics (always fresh data, no cache)
      */
     getRealtimeAnalytics = async (
         req: Request,
@@ -166,23 +166,10 @@ export class AnalyticsController {
 
             await this.checkOwnership(shortCode, userId)
 
-            // Check cache first (with short TTL for realtime)
-            let realtimeData
-            // await analyticsCacheService.getRealtimeAnalytics(
-            //     shortCode
-            // )
-
-            // Fetch fresh data if not in cache
-            if (!realtimeData) {
-                realtimeData = await analyticsRepository.getRealtimeAnalytics(
-                    shortCode
-                )
-                // Cache with short TTL (1 minute)
-                await analyticsCacheService.setRealtimeAnalytics(
-                    shortCode,
-                    realtimeData
-                )
-            }
+            // Always fetch fresh data for realtime (no cache)
+            const realtimeData = await analyticsRepository.getRealtimeAnalytics(
+                shortCode
+            )
 
             logger.info("Real-time analytics data retrieved", {
                 shortCode,
@@ -191,13 +178,14 @@ export class AnalyticsController {
                 last24HoursClicks: realtimeData.last24HoursClicks
             })
 
-            // Transform data to match frontend expectations
+            // Transform data to match frontend expectations with actual device and country data
             const transformedData = {
                 activeUsers: realtimeData.currentHourClicks, // Approximate active users
                 recentClicks: realtimeData.recentClicks.map(click => ({
                     timestamp: click.timestamp,
-                    country: "Unknown", // Will be enhanced with actual data
-                    device: "Unknown"
+                    country: click.country || "Unknown",
+                    device: click.device || "Unknown",
+                    browser: click.browser || "Unknown"
                 }))
             }
 

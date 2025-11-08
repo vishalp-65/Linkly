@@ -54,6 +54,13 @@ class App {
             })
         )
 
+        console.log(
+            "CORS Origin:",
+            !config.isDevelopment
+                ? "Development Mode - All Origins Allowed"
+                : process.env.ALLOWED_ORIGINS
+        )
+
         // CORS configuration
         this.app.use(
             cors({
@@ -162,20 +169,26 @@ class App {
             logger.info("Redis connection established")
 
             // Initialize Kafka connection (optional - service will work without it)
-            logger.info("Initializing Kafka connection...")
+            logger.info("Checking Kafka availability...")
             try {
-                await kafka.connect()
+                // Set a short timeout for Kafka connection attempt
+                const kafkaConnectPromise = kafka.connect()
+                const timeoutPromise = new Promise((_, reject) =>
+                    setTimeout(() => reject(new Error('Kafka connection timeout')), 3000)
+                )
+
+                await Promise.race([kafkaConnectPromise, timeoutPromise])
                 const kafkaHealthy = await kafka.healthCheck()
                 if (kafkaHealthy) {
                     logger.info("Kafka connection established")
                 } else {
                     logger.warn(
-                        "Kafka connection failed, analytics will use in-memory buffering"
+                        "Kafka not available, analytics will use direct database writes"
                     )
                 }
             } catch (error) {
                 logger.warn(
-                    "Kafka initialization failed, analytics will use in-memory buffering",
+                    "Kafka not available, analytics will use direct database writes",
                     {
                         error:
                             error instanceof Error
@@ -196,9 +209,15 @@ class App {
                 await analyticsService.start()
                 logger.info("Analytics service started")
             } catch (error) {
-                logger.warn("Analytics service failed to start, analytics will be limited", {
-                    error: error instanceof Error ? error.message : "Unknown error"
-                })
+                logger.warn(
+                    "Analytics service failed to start, analytics will be limited",
+                    {
+                        error:
+                            error instanceof Error
+                                ? error.message
+                                : "Unknown error"
+                    }
+                )
             }
 
             logger.info("Application initialized successfully")
@@ -222,7 +241,8 @@ class App {
                 logger.info("Analytics service stopped")
             } catch (error) {
                 logger.warn("Error stopping analytics service", {
-                    error: error instanceof Error ? error.message : "Unknown error"
+                    error:
+                        error instanceof Error ? error.message : "Unknown error"
                 })
             }
 
@@ -232,7 +252,8 @@ class App {
                 logger.info("Direct analytics service stopped")
             } catch (error) {
                 logger.warn("Error stopping direct analytics service", {
-                    error: error instanceof Error ? error.message : "Unknown error"
+                    error:
+                        error instanceof Error ? error.message : "Unknown error"
                 })
             }
 
