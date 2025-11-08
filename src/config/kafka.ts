@@ -15,11 +15,11 @@ interface KafkaConfiguration extends KafkaConfig {
 const config: KafkaConfiguration = {
     clientId: process.env.KAFKA_CLIENT_ID || 'url-shortener-service',
     brokers: (process.env.KAFKA_BROKERS || 'localhost:9092').split(','),
-    connectionTimeout: parseInt(process.env.KAFKA_CONNECTION_TIMEOUT || '3000'),
-    requestTimeout: parseInt(process.env.KAFKA_REQUEST_TIMEOUT || '30000'),
+    connectionTimeout: parseInt(process.env.KAFKA_CONNECTION_TIMEOUT || '2000'),
+    requestTimeout: parseInt(process.env.KAFKA_REQUEST_TIMEOUT || '5000'),
     retry: {
         initialRetryTime: parseInt(process.env.KAFKA_INITIAL_RETRY_TIME || '100'),
-        retries: parseInt(process.env.KAFKA_RETRIES || '8'),
+        retries: parseInt(process.env.KAFKA_RETRIES || '2'),
     },
     ssl: process.env.KAFKA_SSL_ENABLED === 'true' ? {
         rejectUnauthorized: process.env.NODE_ENV === 'production'
