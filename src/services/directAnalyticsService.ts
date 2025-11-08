@@ -2,6 +2,7 @@ import { db } from "../config/database"
 import { logger } from "../config/logger"
 import { CreateAnalyticsEventInput } from "../types/database"
 import { v4 as uuidv4 } from "uuid"
+import { websocketService } from "./websocketService"
 
 /**
  * Direct Analytics Service
@@ -28,6 +29,23 @@ class DirectAnalyticsService {
             eventData.device_type = deviceInfo.device
             eventData.browser = deviceInfo.browser
             eventData.os = deviceInfo.os
+        }
+
+        // Emit real-time WebSocket event (don't wait for database)
+        try {
+            websocketService.emitClickEvent({
+                shortCode: eventData.short_code,
+                timestamp: (eventData.clicked_at || new Date()).toISOString(),
+                country: eventData.country_code,
+                device: eventData.device_type,
+                browser: eventData.browser,
+                referrer: eventData.referrer,
+                ipAddress: eventData.ip_address
+            })
+        } catch (error) {
+            logger.warn("Failed to emit WebSocket click event", {
+                error: error instanceof Error ? error.message : "Unknown error"
+            })
         }
 
         // Add to buffer

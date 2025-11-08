@@ -2,7 +2,13 @@ import React, { useEffect, useCallback } from 'react';
 import { useDispatch, useSelector } from 'react-redux';
 import type { AppDispatch, RootState } from '../store';
 import { initializeAuth, clearAuth, setGuestMode } from '../store/authSlice';
-import { useGetPermissionsQuery, useGetProfileQuery, useRefreshTokenMutation } from '../services/api';
+import {
+    useGetPermissionsQuery,
+    useGetProfileQuery,
+    useRefreshTokenMutation,
+    useGetUserPreferencesQuery,
+    useGetNotificationSettingsQuery
+} from '../services/api';
 
 interface AuthProviderProps {
     children: React.ReactNode;
@@ -21,6 +27,16 @@ const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
 
     // Only fetch profile if authenticated
     const { error: profileError } = useGetProfileQuery(undefined, {
+        skip: !isAuthenticated || isGuest,
+    });
+
+    // Fetch user preferences if authenticated
+    useGetUserPreferencesQuery(undefined, {
+        skip: !isAuthenticated || isGuest,
+    });
+
+    // Fetch notification settings if authenticated
+    useGetNotificationSettingsQuery(undefined, {
         skip: !isAuthenticated || isGuest,
     });
 

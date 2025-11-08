@@ -41,17 +41,31 @@ function App() {
     // Initialize critical resource preloading
     ResourcePreloader.preloadCriticalResources();
 
-    // Register service worker for caching and offline support
-    const swManager = ServiceWorkerManager.getInstance();
-    swManager.register();
+    // Register service worker only if caching is enabled
+    const enableCache = import.meta.env.VITE_ENABLE_CACHE === 'true';
 
-    // Preload critical resources in service worker
-    swManager.preloadCriticalResources([
-      '/',
-      '/dashboard',
-      '/analytics',
-      '/settings',
-    ]);
+    if (enableCache) {
+      const swManager = ServiceWorkerManager.getInstance();
+      swManager.register();
+
+      // Preload critical resources in service worker
+      swManager.preloadCriticalResources([
+        '/',
+        '/dashboard',
+        '/analytics',
+        '/settings',
+      ]);
+    } else {
+      // Unregister any existing service workers in development
+      if ('serviceWorker' in navigator) {
+        navigator.serviceWorker.getRegistrations().then((registrations) => {
+          registrations.forEach((registration) => {
+            registration.unregister();
+            console.log('Service Worker unregistered for development');
+          });
+        });
+      }
+    }
   }, []);
 
   return (

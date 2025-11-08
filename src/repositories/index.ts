@@ -2,6 +2,7 @@
 import { URLRepository } from './URLRepository';
 import { UserRepository } from './UserRepository';
 import { AnalyticsRepository } from './AnalyticsRepository';
+import { PreferencesRepository } from './PreferencesRepository';
 import { logger } from '../config/logger';
 import { db } from '../config/database';
 
@@ -9,6 +10,7 @@ import { db } from '../config/database';
 let urlRepository: URLRepository;
 let userRepository: UserRepository;
 let analyticsRepository: AnalyticsRepository;
+let preferencesRepository: PreferencesRepository;
 
 /**
  * Get URL Repository instance
@@ -41,6 +43,16 @@ export function getAnalyticsRepository(): AnalyticsRepository {
 }
 
 /**
+ * Get Preferences Repository instance
+ */
+export function getPreferencesRepository(): PreferencesRepository {
+    if (!preferencesRepository) {
+        preferencesRepository = new PreferencesRepository();
+    }
+    return preferencesRepository;
+}
+
+/**
  * Repository health check
  */
 export async function checkRepositoryHealth(): Promise<{
@@ -56,15 +68,16 @@ export async function checkRepositoryHealth(): Promise<{
     };
 }> {
     try {
-        const [urlHealthy, userHealthy] = await Promise.all([
+        const [urlHealthy, userHealthy, preferencesHealthy] = await Promise.all([
             getURLRepository().healthCheck(),
             getUserRepository().healthCheck(),
+            getPreferencesRepository().healthCheck(),
         ]);
 
         const dbHealthy = await db.healthCheck();
         const poolStats = db.getPoolStats();
 
-        const allHealthy = urlHealthy && userHealthy && dbHealthy;
+        const allHealthy = urlHealthy && userHealthy && preferencesHealthy && dbHealthy;
 
         return {
             healthy: allHealthy,
@@ -109,6 +122,7 @@ export async function initializeRepositories(): Promise<void> {
         getURLRepository();
         getUserRepository();
         getAnalyticsRepository();
+        getPreferencesRepository();
 
         // Perform health checks
         const health = await checkRepositoryHealth();
@@ -151,6 +165,7 @@ export async function cleanupRepositories(): Promise<void> {
 export { URLRepository } from './URLRepository';
 export { UserRepository } from './UserRepository';
 export { AnalyticsRepository } from './AnalyticsRepository';
+export { PreferencesRepository } from './PreferencesRepository';
 export { BaseRepository } from './BaseRepository';
 
 // Export types

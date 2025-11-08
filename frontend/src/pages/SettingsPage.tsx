@@ -1,4 +1,5 @@
 import React, { useState, useMemo } from 'react';
+import AccountSettings from '../components/settings/AccountSettings';
 import URLPreferencesComponent from '../components/settings/URLPreferences';
 import NotificationSettingsComponent from '../components/settings/NotificationSettings';
 
@@ -52,8 +53,8 @@ const SettingsPage: React.FC = () => {
                     key={tab.id}
                     onClick={() => setActiveTab(tab.id)}
                     className={`w-full flex items-center px-4 py-3 text-left text-sm font-medium rounded-lg transition-all duration-200 ${activeTab === tab.id
-                        ? 'bg-gradient-to-r from-blue-50 to-indigo-50 dark:from-blue-900/50 dark:to-indigo-900/50 text-blue-700 dark:text-blue-300 border-l-4 border-blue-700 dark:border-blue-500 shadow-sm'
-                        : 'text-gray-600 dark:text-gray-400 hover:bg-gray-50 dark:hover:bg-gray-700 hover:text-gray-900 dark:hover:text-gray-200'
+                      ? 'bg-gradient-to-r from-blue-50 to-indigo-50 dark:from-blue-900/50 dark:to-indigo-900/50 text-blue-700 dark:text-blue-300 border-l-4 border-blue-700 dark:border-blue-500 shadow-sm'
+                      : 'text-gray-600 dark:text-gray-400 hover:bg-gray-50 dark:hover:bg-gray-700 hover:text-gray-900 dark:hover:text-gray-200'
                       }`}
                   >
                     <span className="mr-3 text-lg">{tab.icon}</span>
@@ -72,18 +73,7 @@ const SettingsPage: React.FC = () => {
   );
 };
 
-const AccountSettings: React.FC = () => {
-  return (
-    <div className="bg-white dark:bg-gray-800 rounded-xl shadow-lg border border-gray-100 dark:border-gray-700 p-6">
-      <h2 className="text-xl font-semibold text-gray-900 dark:text-white mb-4">
-        Account Settings
-      </h2>
-      <p className="text-gray-600 dark:text-gray-400">
-        Manage your account information and security settings.
-      </p>
-    </div>
-  );
-};
+
 
 const URLPreferences: React.FC = () => {
   return <URLPreferencesComponent />;

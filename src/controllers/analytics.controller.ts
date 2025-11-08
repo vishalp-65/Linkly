@@ -5,6 +5,7 @@ import { ApiResponse } from "../utils/ApiResponse"
 import { logger } from "../config/logger"
 import { AnalyticsFilters } from "../types/database"
 import { db } from "../config/database"
+import { websocketService } from "../services/websocketService"
 
 export class AnalyticsController {
     /**
@@ -129,7 +130,18 @@ export class AnalyticsController {
                 totalClicks: analyticsData.totalClicks
             })
 
-            ApiResponse.success(res, analyticsData)
+            // Transform data to match frontend expectations
+            const transformedData = {
+                shortCode: analyticsData.shortCode,
+                totalClicks: analyticsData.totalClicks,
+                uniqueVisitors: analyticsData.uniqueVisitors,
+                clicksByDate: analyticsData.clicksByDay,
+                clicksByCountry: analyticsData.topCountries,
+                clicksByDevice: analyticsData.deviceBreakdown,
+                clicksByReferrer: analyticsData.topReferrers
+            }
+
+            ApiResponse.success(res, transformedData)
         } catch (error) {
             next(error)
         }
@@ -179,7 +191,17 @@ export class AnalyticsController {
                 last24HoursClicks: realtimeData.last24HoursClicks
             })
 
-            ApiResponse.success(res, realtimeData)
+            // Transform data to match frontend expectations
+            const transformedData = {
+                activeUsers: realtimeData.currentHourClicks, // Approximate active users
+                recentClicks: realtimeData.recentClicks.map(click => ({
+                    timestamp: click.timestamp,
+                    country: "Unknown", // Will be enhanced with actual data
+                    device: "Unknown"
+                }))
+            }
+
+            ApiResponse.success(res, transformedData)
         } catch (error) {
             next(error)
         }
@@ -251,7 +273,19 @@ export class AnalyticsController {
                 totalUrls: globalData.totalUrls
             })
 
-            ApiResponse.success(res, globalData)
+            // Transform data to match frontend expectations
+            const transformedData = {
+                totalUrls: globalData.totalUrls,
+                totalClicks: globalData.totalClicks,
+                activeUrls: globalData.totalUrls, // All non-deleted URLs are considered active
+                topUrls: globalData.topUrls.map(url => ({
+                    short_code: url.shortCode,
+                    long_url: url.longUrl,
+                    access_count: url.clicks
+                }))
+            }
+
+            ApiResponse.success(res, transformedData)
         } catch (error) {
             next(error)
         }
@@ -299,6 +333,22 @@ export class AnalyticsController {
         try {
             const cacheStats = await analyticsCacheService.getCacheStats()
             ApiResponse.success(res, cacheStats)
+        } catch (error) {
+            next(error)
+        }
+    }
+
+    /**
+     * Get WebSocket statistics
+     */
+    getWebSocketStats = async (
+        req: Request,
+        res: Response,
+        next: NextFunction
+    ): Promise<void> => {
+        try {
+            const stats = websocketService.getStats()
+            ApiResponse.success(res, stats)
         } catch (error) {
             next(error)
         }

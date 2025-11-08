@@ -1,10 +1,12 @@
 // Import tracing first to ensure proper instrumentation
 import './tracing';
 
+import http from 'http';
 import App from './app';
 import { config } from './config/environment';
 import { logger } from './config/logger';
 import { tracingService } from './services/tracingService';
+import { websocketService } from './services/websocketService';
 
 // Handle uncaught exceptions
 process.on('uncaughtException', (error: Error) => {
@@ -53,6 +55,9 @@ async function gracefulShutdown(): Promise<void> {
             await app.shutdown();
         }
 
+        // Shutdown WebSocket service
+        await websocketService.shutdown();
+
         // Shutdown tracing
         await tracingService.shutdown();
 
@@ -72,8 +77,15 @@ async function startServer(): Promise<void> {
         app = new App();
         await app.initialize();
 
+        // Create HTTP server
+        server = http.createServer(app.app);
+
+        // Initialize WebSocket service
+        websocketService.initialize(server);
+        logger.info('WebSocket service initialized');
+
         // Start HTTP server
-        server = app.app.listen(config.port, config.host, () => {
+        server.listen(config.port, config.host, () => {
             logger.info('Server started successfully', {
                 port: config.port,
                 host: config.host,

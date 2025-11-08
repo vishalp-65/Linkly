@@ -23,6 +23,13 @@ router.post(
 )
 
 router.get(
+    "/:shortCode/stats",
+    authMiddleware.authenticate,
+    // validateRequest(urlValidators.shortCode),
+    asyncHandler(urlController.getUrlStats)
+)
+
+router.get(
     "/get-all",
     authMiddleware.authenticate,
     validateQuery(urlValidators.getAllUrls),

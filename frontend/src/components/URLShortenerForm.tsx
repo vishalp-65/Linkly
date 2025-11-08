@@ -1,4 +1,4 @@
-import React, { useState, useCallback } from 'react';
+import React, { useState, useCallback, useEffect } from 'react';
 import { useSelector } from 'react-redux';
 import type { RootState } from '../store';
 import { useCreateShortUrlMutation } from '../services/api';
@@ -17,6 +17,7 @@ interface URLShortenerFormProps {
 
 const URLShortenerForm: React.FC<URLShortenerFormProps> = ({ onSuccess }) => {
     const { permissions, isGuest } = useSelector((state: RootState) => state.auth);
+    const { preferences } = useSelector((state: RootState) => state.user);
     const [createShortUrl, { isLoading }] = useCreateShortUrlMutation();
     const { showToast } = useToast();
 
@@ -33,6 +34,17 @@ const URLShortenerForm: React.FC<URLShortenerFormProps> = ({ onSuccess }) => {
 
     const canUseCustomAlias = permissions?.canCreateCustomAlias && !isGuest;
     const canSetExpiry = permissions?.canSetCustomExpiry && !isGuest;
+
+    // Apply user preferences on component mount
+    useEffect(() => {
+        if (preferences && !isGuest) {
+            // Set default expiry from user preferences
+            if (preferences.defaultExpiry && canSetExpiry) {
+                setExpiryDays(preferences.defaultExpiry.toString());
+                setUseExpiry(true);
+            }
+        }
+    }, [preferences, isGuest, canSetExpiry]);
 
     const validateUrl = useCallback((urlString: string): boolean => {
         try {
@@ -201,7 +213,7 @@ const URLShortenerForm: React.FC<URLShortenerFormProps> = ({ onSuccess }) => {
                     />
 
                     {canUseCustomAlias && (
-                        <div className="flex items-center space-x-2 p-4 bg-gray-50 dark:bg-gray-700 rounded-lg">
+                        <div className="flex items-center space-x-2 p-4 bg-gray-50 dark:bg-gray-700/30 rounded-lg">
                             <input
                                 type="checkbox"
                                 id="useCustomAlias"
@@ -273,7 +285,7 @@ const URLShortenerForm: React.FC<URLShortenerFormProps> = ({ onSuccess }) => {
                     )}
 
                     {canSetExpiry && (
-                        <div className="flex items-center space-x-2 p-4 bg-gray-50 dark:bg-gray-700 rounded-lg">
+                        <div className="flex items-center space-x-2 p-4 bg-gray-50 dark:bg-gray-700/30 rounded-lg">
                             <input
                                 type="checkbox"
                                 id="useExpiry"

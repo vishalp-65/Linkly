@@ -76,7 +76,7 @@ const baseQueryWithReauth: BaseQueryFn<
 
 // Add retry logic for network errors
 const staggeredBaseQuery = retry(baseQueryWithReauth, {
-  maxRetries: 3,
+  maxRetries: 2,
 });
 
 
@@ -303,15 +303,10 @@ export const api = createApi({
     }),
 
     getUrlByShortCode: builder.query<
-      ApiResponse<{
-        shortCode: string;
-        longUrl: string;
-        accessCount: number;
-        expiresAt?: string;
-      }>,
+      ApiResponse<URLItem>,
       string
     >({
-      query: (shortCode) => `/url/${shortCode}`,
+      query: (shortCode) => `/url/${shortCode}/stats`,
     }),
 
     checkAliasAvailability: builder.query<

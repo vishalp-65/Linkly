@@ -6,15 +6,12 @@ export const analyticsValidators = {
     // Validate shortCode parameter
     shortCode: Joi.object({
         shortCode: Joi.string()
-            .alphanum()
-            .min(3)
-            .max(10)
+            .pattern(/^[a-zA-Z0-9_-]{3,10}$/)
             .required()
             .messages({
-                'string.alphanum': 'Short code must contain only alphanumeric characters',
-                'string.min': 'Short code must be at least 3 characters long',
-                'string.max': 'Short code must not exceed 10 characters',
-                'any.required': 'Short code is required'
+                "string.pattern.base":
+                    "Short code must be 3-10 characters long and contain only letters, numbers, hyphens, and underscores",
+                "any.required": "Short code is required"
             })
     }),
 

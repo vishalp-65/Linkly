@@ -51,4 +51,11 @@ router.get(
     asyncHandler(analyticsController.getCacheStats)
 )
 
+// WebSocket stats
+router.get(
+    "/websocket/stats",
+    authMiddleware.authenticate,
+    asyncHandler(analyticsController.getWebSocketStats)
+)
+
 export default router

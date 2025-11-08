@@ -7,7 +7,8 @@ import {
     PaginatedResult,
     URLMappingWithStats,
     NotFoundError,
-    BaseRepository as IBaseRepository
+    BaseRepository as IBaseRepository,
+    User
 } from "../types/database"
 import { logger } from "../config/logger"
 import crypto from "crypto"
@@ -15,11 +16,11 @@ import crypto from "crypto"
 export class URLRepository
     extends BaseRepository
     implements
-        IBaseRepository<
-            URLMapping,
-            CreateURLMappingInput,
-            UpdateURLMappingInput
-        >
+    IBaseRepository<
+        URLMapping,
+        CreateURLMappingInput,
+        UpdateURLMappingInput
+    >
 {
     /**
      * Create a new URL mapping
@@ -753,6 +754,32 @@ export class URLRepository
                 error: error instanceof Error ? error.message : "Unknown error"
             })
             throw this.handleDatabaseError(error)
+        }
+    }
+
+
+
+    /**
+     * Find URLs expiring within a time range
+     */
+    async findExpiringUrls(startDate: Date, endDate: Date): Promise<URLMapping[]> {
+        try {
+            const query = `
+                SELECT * FROM url_mappings
+                WHERE expires_at IS NOT NULL
+                  AND expires_at BETWEEN $1 AND $2
+                  AND NOT is_deleted
+                  AND user_id IS NOT NULL
+                ORDER BY expires_at ASC
+            `;
+
+            const result = await this.query(query, [startDate, endDate]);
+            return result.rows as URLMapping[];
+        } catch (error) {
+            logger.error('Failed to find expiring URLs', {
+                error: error instanceof Error ? error.message : 'Unknown error'
+            });
+            throw this.handleDatabaseError(error);
         }
     }
 }

@@ -5,7 +5,6 @@ import Card from './common/Card';
 import Modal from './common/Modal';
 import type { URLMapping } from '../types/url.types';
 import { useToast } from '../contexts/ToastContext';
-import { API_REDIRECT_BASE_URL } from '../utils/constant';
 
 interface URLCardProps {
     url: URLMapping;
@@ -18,7 +17,7 @@ interface URLCardProps {
 const CopyIcon: React.FC<{ copied?: boolean }> = ({ copied }) =>
     copied ? (
         <svg
-            className="w-5 h-5 text-green-600 dark:text-green-400"
+            className="w-4 h-4 sm:w-5 sm:h-5 text-green-600 dark:text-green-400"
             fill="none"
             stroke="currentColor"
             viewBox="0 0 24 24"
@@ -32,7 +31,7 @@ const CopyIcon: React.FC<{ copied?: boolean }> = ({ copied }) =>
         </svg>
     ) : (
         <svg
-            className="w-5 h-5"
+            className="w-4 h-4 sm:w-5 sm:h-5"
             fill="none"
             stroke="currentColor"
             viewBox="0 0 24 24"
@@ -48,7 +47,7 @@ const CopyIcon: React.FC<{ copied?: boolean }> = ({ copied }) =>
 
 const ExternalLinkIcon: React.FC = () => (
     <svg
-        className="w-4 h-4 opacity-0 group-hover:opacity-100 transition-opacity"
+        className="w-3 h-3 sm:w-4 sm:h-4 opacity-0 group-hover:opacity-100 transition-opacity"
         fill="none"
         stroke="currentColor"
         viewBox="0 0 24 24"
@@ -64,7 +63,7 @@ const ExternalLinkIcon: React.FC = () => (
 
 const AnalyticsIcon: React.FC = () => (
     <svg
-        className="w-5 h-5"
+        className="w-4 h-4 sm:w-5 sm:h-5"
         fill="none"
         stroke="currentColor"
         viewBox="0 0 24 24"
@@ -80,7 +79,7 @@ const AnalyticsIcon: React.FC = () => (
 
 const ShareIcon: React.FC = () => (
     <svg
-        className="w-5 h-5"
+        className="w-4 h-4 sm:w-5 sm:h-5"
         fill="none"
         stroke="currentColor"
         viewBox="0 0 24 24"
@@ -96,7 +95,7 @@ const ShareIcon: React.FC = () => (
 
 const DeleteIcon: React.FC = () => (
     <svg
-        className="w-5 h-5"
+        className="w-4 h-4 sm:w-5 sm:h-5"
         fill="none"
         stroke="currentColor"
         viewBox="0 0 24 24"
@@ -126,7 +125,7 @@ const Badge: React.FC<{
 
     return (
         <span
-            className={`inline-flex items-center px-2 py-0.5 rounded text-xs font-medium ${variantClasses[variant]}`}
+            className={`inline-flex items-center px-1.5 sm:px-2 py-0.5 rounded text-xs font-medium ${variantClasses[variant]}`}
         >
             {icon && <span className="mr-1">{icon}</span>}
             {children}
@@ -139,21 +138,21 @@ const Stat: React.FC<{ icon: React.ReactNode; label: string }> = ({
     icon,
     label,
 }) => (
-    <span className="flex items-center gap-1 text-gray-500 dark:text-gray-400">
+    <span className="flex items-center gap-1 text-gray-500 dark:text-gray-400 whitespace-nowrap">
         {icon}
-        {label}
+        <span className="text-xs">{label}</span>
     </span>
 );
 
 const URLCard: React.FC<URLCardProps> = React.memo(
-    ({ url, onAnalyticsClick, onEditClick, onShareClick }) => {
+    ({ url, onAnalyticsClick, onShareClick }) => {
         const [copied, setCopied] = useState(false);
         const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
         const [deleteUrl, { isLoading: isDeleting }] = useDeleteUrlMutation();
         const { showToast } = useToast();
 
         const shortUrl = useMemo(
-            () => `${API_REDIRECT_BASE_URL}/${url.short_code}`,
+            () => `${window.location.origin}/${url.short_code}`,
             [url.short_code]
         );
 
@@ -217,10 +216,6 @@ const URLCard: React.FC<URLCardProps> = React.memo(
             onAnalyticsClick?.(url);
         }, [onAnalyticsClick, url]);
 
-        // const handleEditClick = useCallback(() => {
-        //     onEditClick?.(url);
-        // }, [onEditClick, url]);
-
         const handleShareClick = useCallback(() => {
             onShareClick?.(url);
         }, [onShareClick, url]);
@@ -230,8 +225,8 @@ const URLCard: React.FC<URLCardProps> = React.memo(
         }, []);
 
         return (
-            <Card padding="sm" hover className='dark:bg-gray-900/20 px-2 py-1'>
-                <div className="flex items-start justify-between gap-4">
+            <Card padding="sm" hover className="dark:bg-gray-900/20 px-3 sm:px-4 py-3 sm:py-4">
+                <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-3 sm:gap-4">
                     {/* URL Info */}
                     <div className="flex-1 min-w-0">
                         {/* Short URL */}
@@ -240,9 +235,9 @@ const URLCard: React.FC<URLCardProps> = React.memo(
                                 href={shortUrl}
                                 target="_blank"
                                 rel="noopener noreferrer"
-                                className="text-blue-600 dark:text-blue-400 hover:text-blue-700 dark:hover:text-blue-300 font-medium truncate flex items-center gap-1 group"
+                                className="text-sm sm:text-base text-blue-600 dark:text-blue-400 hover:text-blue-700 dark:hover:text-blue-300 font-medium truncate flex items-center gap-1 group max-w-full"
                             >
-                                {shortUrl}
+                                <span className="truncate">{shortUrl}</span>
                                 <ExternalLinkIcon />
                             </a>
 
@@ -265,7 +260,7 @@ const URLCard: React.FC<URLCardProps> = React.memo(
                                         </svg>
                                     }
                                 >
-                                    Custom Alias
+                                    Custom
                                 </Badge>
                             )}
 
@@ -275,25 +270,28 @@ const URLCard: React.FC<URLCardProps> = React.memo(
                                 url.expires_at &&
                                 daysUntilExpiry !== null &&
                                 daysUntilExpiry <= 7 && (
-                                    <Badge variant="yellow">Expires in {daysUntilExpiry}d</Badge>
+                                    <Badge variant="yellow">
+                                        <span className="hidden sm:inline">Expires in </span>
+                                        {daysUntilExpiry}d
+                                    </Badge>
                                 )
                             )}
                         </div>
 
                         {/* Long URL */}
                         <p
-                            className="text-sm text-gray-600 dark:text-gray-400 truncate mb-3"
+                            className="text-xs sm:text-sm text-gray-600 dark:text-gray-400 truncate mb-3"
                             title={url.long_url}
                         >
                             {url.long_url}
                         </p>
 
                         {/* Stats */}
-                        <div className="flex items-center gap-4 text-xs flex-wrap">
+                        <div className="flex items-center gap-3 sm:gap-4 text-xs flex-wrap">
                             <Stat
                                 icon={
                                     <svg
-                                        className="w-4 h-4"
+                                        className="w-3 h-3 sm:w-4 sm:h-4"
                                         fill="none"
                                         stroke="currentColor"
                                         viewBox="0 0 24 24"
@@ -325,7 +323,7 @@ const URLCard: React.FC<URLCardProps> = React.memo(
                             <Stat
                                 icon={
                                     <svg
-                                        className="w-4 h-4"
+                                        className="w-3 h-3 sm:w-4 sm:h-4"
                                         fill="none"
                                         stroke="currentColor"
                                         viewBox="0 0 24 24"
@@ -345,7 +343,7 @@ const URLCard: React.FC<URLCardProps> = React.memo(
                                 <Stat
                                     icon={
                                         <svg
-                                            className="w-4 h-4"
+                                            className="w-3 h-3 sm:w-4 sm:h-4"
                                             fill="none"
                                             stroke="currentColor"
                                             viewBox="0 0 24 24"
@@ -365,10 +363,10 @@ const URLCard: React.FC<URLCardProps> = React.memo(
                     </div>
 
                     {/* Action Buttons */}
-                    <div className="flex items-center gap-2">
+                    <div className="flex items-center gap-1.5 sm:gap-2 justify-end sm:justify-start">
                         <button
                             onClick={handleCopy}
-                            className="p-2 text-gray-600 dark:text-gray-400 hover:text-blue-600 dark:hover:text-blue-400 hover:bg-blue-50 dark:hover:bg-blue-900/20 rounded-md transition-colors cursor-pointer"
+                            className="p-1.5 sm:p-2 text-gray-600 dark:text-gray-400 hover:text-blue-600 dark:hover:text-blue-400 hover:bg-blue-50 dark:hover:bg-blue-900/20 rounded-md transition-colors cursor-pointer"
                             title="Copy to clipboard"
                             aria-label="Copy short URL"
                         >
@@ -378,7 +376,7 @@ const URLCard: React.FC<URLCardProps> = React.memo(
                         {onAnalyticsClick && (
                             <button
                                 onClick={handleAnalyticsClick}
-                                className="p-2 text-gray-600 dark:text-gray-400 hover:text-blue-600 dark:hover:text-blue-400 hover:bg-blue-50 dark:hover:bg-blue-900/20 rounded-md transition-colors cursor-pointer"
+                                className="p-1.5 sm:p-2 text-gray-600 dark:text-gray-400 hover:text-blue-600 dark:hover:text-blue-400 hover:bg-blue-50 dark:hover:bg-blue-900/20 rounded-md transition-colors cursor-pointer"
                                 title="View analytics"
                                 aria-label="View analytics"
                             >
@@ -389,7 +387,7 @@ const URLCard: React.FC<URLCardProps> = React.memo(
                         {onShareClick && (
                             <button
                                 onClick={handleShareClick}
-                                className="p-2 text-gray-600 dark:text-gray-400 hover:text-blue-600 dark:hover:text-blue-400 hover:bg-blue-50 dark:hover:bg-blue-900/20 rounded-md transition-colors cursor-pointer"
+                                className="p-1.5 sm:p-2 text-gray-600 dark:text-gray-400 hover:text-blue-600 dark:hover:text-blue-400 hover:bg-blue-50 dark:hover:bg-blue-900/20 rounded-md transition-colors cursor-pointer"
                                 title="Share"
                                 aria-label="Share URL"
                             >
@@ -400,7 +398,7 @@ const URLCard: React.FC<URLCardProps> = React.memo(
                         <button
                             onClick={() => toggleDeleteModal(true)}
                             disabled={isDeleting}
-                            className="p-2 text-gray-600 dark:text-gray-400 hover:text-red-600 dark:hover:text-red-400 hover:bg-red-50 dark:hover:bg-red-900/20 rounded-md transition-colors disabled:opacity-50 disabled:cursor-not-allowed cursor-pointer"
+                            className="p-1.5 sm:p-2 text-gray-600 dark:text-gray-400 hover:text-red-600 dark:hover:text-red-400 hover:bg-red-50 dark:hover:bg-red-900/20 rounded-md transition-colors disabled:opacity-50 disabled:cursor-not-allowed cursor-pointer"
                             title="Delete"
                             aria-label="Delete URL"
                         >
@@ -416,10 +414,10 @@ const URLCard: React.FC<URLCardProps> = React.memo(
                     title="Delete URL"
                     size="md"
                 >
-                    <div className="flex items-center gap-5 mb-4">
-                        <div className="shrink-0 w-12 h-12 rounded-full bg-red-100 dark:bg-red-900/30 flex items-center justify-center">
+                    <div className="flex items-center gap-3 sm:gap-5 mb-4">
+                        <div className="shrink-0 w-10 h-10 sm:w-12 sm:h-12 rounded-full bg-red-100 dark:bg-red-900/30 flex items-center justify-center">
                             <svg
-                                className="w-6 h-6 text-red-600 dark:text-red-400"
+                                className="w-5 h-5 sm:w-6 sm:h-6 text-red-600 dark:text-red-400"
                                 fill="none"
                                 stroke="currentColor"
                                 viewBox="0 0 24 24"
@@ -432,23 +430,24 @@ const URLCard: React.FC<URLCardProps> = React.memo(
                                 />
                             </svg>
                         </div>
-                        <p className="text-gray-700 dark:text-gray-300 text-sm">
+                        <p className="text-gray-700 dark:text-gray-300 text-xs sm:text-sm">
                             Are you sure you want to delete this URL? All analytics data will
                             also be removed.
                         </p>
                     </div>
 
-                    <div className="bg-gray-50 dark:bg-gray-800 rounded-lg p-3 mb-4 border border-gray-200 dark:border-gray-700">
-                        <p className="text-sm text-gray-700 dark:text-gray-300 break-all">
+                    <div className="bg-gray-50 dark:bg-gray-800 rounded-lg p-2 sm:p-3 mb-4 border border-gray-200 dark:border-gray-700">
+                        <p className="text-xs sm:text-sm text-gray-700 dark:text-gray-300 break-all">
                             <strong>Short URL:</strong> {shortUrl}
                         </p>
                     </div>
 
-                    <div className="flex justify-end gap-3 mt-4">
+                    <div className="flex flex-col-reverse sm:flex-row justify-end gap-2 sm:gap-3 mt-4">
                         <Button
                             variant="secondary"
                             onClick={() => toggleDeleteModal(false)}
                             disabled={isDeleting}
+                            className="w-full sm:w-auto"
                         >
                             Cancel
                         </Button>
@@ -456,6 +455,7 @@ const URLCard: React.FC<URLCardProps> = React.memo(
                             variant="danger"
                             onClick={handleDelete}
                             loading={isDeleting}
+                            className="w-full sm:w-auto"
                         >
                             {isDeleting ? 'Deleting...' : 'Delete URL'}
                         </Button>
