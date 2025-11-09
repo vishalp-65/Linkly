@@ -72,6 +72,11 @@ export interface URLItem extends BaseEntity {
     user_id?: number;
 }
 
+export interface LongURL {
+    long_url: string;
+    short_code: string;
+}
+
 
 /** Backward-compatible alias for legacy code */
 export type URLMapping = URLItem;
