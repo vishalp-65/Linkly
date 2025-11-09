@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { useParams } from 'react-router-dom';
-import { useDispatch, useSelector } from 'react-redux';
+import { useDispatch } from 'react-redux';
 
 import Button from '../components/common/Button';
 import MetricCard from '../components/analytics/MetricCard';
@@ -8,9 +8,10 @@ import ClicksOverTimeChart from '../components/analytics/ClicksOverTimeChart';
 import GeographicDistributionMap from '../components/analytics/GeographicDistributionMap';
 import DeviceBreakdownChart from '../components/analytics/DeviceBreakdownChart';
 import ReferrerTable from '../components/analytics/ReferrerTable';
-import LiveClickCounter from '../components/analytics/LiveClickCounter';
+import LiveUpdateToggle from '../components/analytics/LiveUpdateToggle';
 import WebSocketStatus from '../components/analytics/WebSocketStatus';
 import DateRangePicker, { type DateRange } from '../components/analytics/DateRangePicker';
+import websocketService, { type ClickEvent } from '../services/websocket';
 import {
     useGetAnalyticsQuery,
     useGetRealtimeAnalyticsQuery,
@@ -20,12 +21,8 @@ import {
 import {
     setCurrentShortCode,
     setDateRange as setAnalyticsDateRange,
-    enableRealtime,
-    disableRealtime,
-    updateRealtimeClicks
 } from '../store/analyticsSlice';
-import { type RootState } from '../store';
-import websocketService, { type ClickEvent } from '../services/websocket';
+import PageHeader from '../components/common/PageHeader';
 
 const AnalyticsPage: React.FC = () => {
     const { shortCode } = useParams<{ shortCode: string }>();
@@ -36,17 +33,21 @@ const AnalyticsPage: React.FC = () => {
         label: 'Last 30 days'
     });
     const [copied, setCopied] = useState(false);
+    const [liveUpdatesEnabled, setLiveUpdatesEnabled] = useState(true);
+    const [liveClickCount, setLiveClickCount] = useState(0);
 
-    const authToken = useSelector((state: RootState) => state.auth.tokens?.accessToken);
-
-    // Fetch specific URL analytics
+    // Fetch specific URL analytics with polling when live updates are enabled
     const { data: analyticsData, isLoading: isLoadingAnalytics, refetch: refetchAnalytics } = useGetAnalyticsQuery(
         {
             shortCode: shortCode || '',
             dateFrom: dateRange.start,
             dateTo: dateRange.end
         },
-        { skip: !shortCode }
+        {
+            skip: !shortCode,
+            // Poll every 10 seconds when live updates are enabled
+            pollingInterval: liveUpdatesEnabled && shortCode ? 10000 : 0,
+        }
     );
 
     // Fetch global analytics when no shortCode
@@ -63,7 +64,8 @@ const AnalyticsPage: React.FC = () => {
         shortCode || '',
         {
             skip: !shortCode,
-            pollingInterval: 30000
+            // Poll every 5 seconds for realtime data
+            pollingInterval: shortCode ? 5000 : 0,
         }
     );
 
@@ -74,29 +76,12 @@ const AnalyticsPage: React.FC = () => {
         ? (isLoadingAnalytics || isLoadingRealtime)
         : isLoadingGlobal;
 
-    // WebSocket setup (only for specific URLs)
-    useEffect(() => {
-        if (!shortCode || !authToken) return;
-
-        websocketService.connect(authToken);
-
-        const handleClickEvent = (event: ClickEvent) => {
-            dispatch(updateRealtimeClicks({
-                timestamp: event.timestamp,
-                country: event.country || 'Unknown',
-                device: event.userAgent || 'Unknown'
-            }));
-            refetchAnalytics();
-        };
-
-        websocketService.subscribeToClicks(shortCode, handleClickEvent);
-        dispatch(enableRealtime());
-
-        return () => {
-            websocketService.unsubscribeFromClicks(shortCode, handleClickEvent);
-            dispatch(disableRealtime());
-        };
-    }, [shortCode, authToken, dispatch, refetchAnalytics]);
+    // Prepare data based on whether we have a specific URL or global view
+    const isGlobalView = !shortCode;
+    const analytics = isGlobalView ? null : analyticsData?.data;
+    const globalAnalytics = isGlobalView ? globalAnalyticsData?.data : null;
+    const realtime = realtimeData?.data;
+    const urlInfo = urlData?.data;
 
     // Update Redux store
     useEffect(() => {
@@ -112,6 +97,56 @@ const AnalyticsPage: React.FC = () => {
             preset: 'custom'
         }));
     }, [dateRange, dispatch]);
+
+    // Initialize live click count from analytics data
+    useEffect(() => {
+        if (analytics?.totalClicks) {
+            setLiveClickCount(analytics.totalClicks);
+        }
+    }, [analytics?.totalClicks]);
+
+    // WebSocket live updates
+    useEffect(() => {
+        if (!shortCode || !liveUpdatesEnabled) {
+            return;
+        }
+
+        // Connect to WebSocket
+        websocketService.connect();
+
+        const handleClickEvent = (event: ClickEvent) => {
+            if (event.shortCode === shortCode) {
+                console.log('Live click event received:', event);
+                // Increment live click count
+                setLiveClickCount(prev => prev + 1);
+
+                // Trigger analytics refetch to get updated data
+                refetchAnalytics();
+            }
+        };
+
+        // Subscribe to click events
+        websocketService.subscribeToClicks(shortCode, handleClickEvent);
+
+        // Cleanup on unmount or when live updates are disabled
+        return () => {
+            websocketService.unsubscribeFromClicks(shortCode, handleClickEvent);
+        };
+    }, [shortCode, liveUpdatesEnabled]); // Removed refetchAnalytics from dependencies
+
+    // Toggle live updates
+    const handleToggleLiveUpdates = useCallback(() => {
+        setLiveUpdatesEnabled(prev => {
+            const newValue = !prev;
+            if (!newValue) {
+                // Disconnect WebSocket when disabling
+                if (shortCode) {
+                    websocketService.unsubscribeFromClicks(shortCode);
+                }
+            }
+            return newValue;
+        });
+    }, [shortCode]);
 
     const handleExport = useCallback((format: 'csv' | 'pdf') => {
         console.log(`Exporting analytics data as ${format}`);
@@ -135,13 +170,6 @@ const AnalyticsPage: React.FC = () => {
     const handleShortUrlClick = useCallback(() => {
         window.open(`${window.location.origin}/${shortCode}`, '_blank', 'noopener,noreferrer');
     }, [shortCode]);
-
-    // Prepare data based on whether we have a specific URL or global view
-    const isGlobalView = !shortCode;
-    const analytics = isGlobalView ? null : analyticsData?.data;
-    const globalAnalytics = isGlobalView ? globalAnalyticsData?.data : null;
-    const realtime = realtimeData?.data;
-    const urlInfo = urlData?.data;
 
     // Transform data for charts
     const clicksChartData = isGlobalView
@@ -181,10 +209,10 @@ const AnalyticsPage: React.FC = () => {
             percentage: analytics.totalClicks > 0 ? (item.clicks / analytics.totalClicks) * 100 : 0
         })) || []);
 
-    // Calculate metrics
+    // Calculate metrics (use live count for specific URLs when live updates are enabled)
     const totalClicks = isGlobalView
         ? (globalAnalytics?.totalClicks || 0)
-        : (analytics?.totalClicks || 0);
+        : (liveUpdatesEnabled ? liveClickCount : (analytics?.totalClicks || 0));
 
     const uniqueVisitors = isGlobalView
         ? 0
@@ -210,29 +238,20 @@ const AnalyticsPage: React.FC = () => {
                 <div className="mb-6 sm:mb-8">
                     <div className="flex flex-col gap-3 sm:gap-4">
                         {/* Title and Back Button */}
-                        <div className="flex-1 min-w-0">
-                            <div className="flex items-center gap-2 mb-2">
-                                <button
-                                    onClick={() => window.history.back()}
-                                    className="p-1.5 sm:p-2 text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-white hover:bg-white dark:hover:bg-gray-800 rounded-lg transition-colors"
-                                    aria-label="Go back"
-                                >
-                                    <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
-                                    </svg>
-                                </button>
-                                <h1 className="text-xl sm:text-2xl lg:text-3xl font-bold text-gray-900 dark:text-white">
-                                    {isGlobalView ? 'Global Analytics' : 'Analytics Dashboard'}
-                                </h1>
-                            </div>
-
-                            {/* WebSocket Status (only for specific URLs) */}
-                            {!isGlobalView && <WebSocketStatus className="mb-3 mt-2 ml-8 sm:ml-9" />}
-                            {/* Global View Info */}
-                            {isGlobalView && (
-                                <p className="text-xs ml-10 sm:text-sm text-gray-600 dark:text-gray-400">
-                                    Overview of all your shortened URLs and their performance
-                                </p>
+                        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
+                            <PageHeader
+                                title={isGlobalView ? 'Global Analytics' : 'Analytics Dashboard'}
+                                subtitle={isGlobalView ?
+                                    " Overview of all your shortened URLs and their performance"
+                                    : <WebSocketStatus isLiveUpdateEnabled={liveUpdatesEnabled} />}
+                                showBackButton
+                            />
+                            {!isGlobalView && (
+                                <LiveUpdateToggle
+                                    isEnabled={liveUpdatesEnabled}
+                                    isConnected={websocketService.isConnected()}
+                                    onToggle={handleToggleLiveUpdates}
+                                />
                             )}
                         </div>
 
@@ -285,10 +304,31 @@ const AnalyticsPage: React.FC = () => {
                                             <div className="w-1.5 h-1.5 bg-green-400 rounded-full mr-1"></div>
                                             Active
                                         </span>
-                                        <LiveClickCounter
-                                            shortCode={shortCode || ''}
-                                            initialCount={totalClicks}
-                                        />
+                                        <div className="flex items-center gap-2">
+                                            <svg
+                                                className="w-4 h-4 text-blue-600 dark:text-blue-400"
+                                                fill="none"
+                                                stroke="currentColor"
+                                                viewBox="0 0 24 24"
+                                            >
+                                                <path
+                                                    strokeLinecap="round"
+                                                    strokeLinejoin="round"
+                                                    strokeWidth={2}
+                                                    d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"
+                                                />
+                                                <path
+                                                    strokeLinecap="round"
+                                                    strokeLinejoin="round"
+                                                    strokeWidth={2}
+                                                    d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z"
+                                                />
+                                            </svg>
+                                            <span className="font-bold text-gray-900 dark:text-white">
+                                                {liveClickCount.toLocaleString()}
+                                            </span>
+                                            <span className="text-sm text-gray-500 dark:text-gray-400">clicks</span>
+                                        </div>
                                     </div>
                                 </div>
                             </div>
@@ -309,6 +349,7 @@ const AnalyticsPage: React.FC = () => {
                                             value={dateRange}
                                             onChange={handleDateRangeChange}
                                             disabled={isLoadingData}
+                                            className='shadow-none'
                                         />
                                     </div>
                                     {isLoadingData && (
