@@ -1,76 +1,40 @@
-import React, { useState, useEffect, useRef, useCallback } from 'react';
-import websocketService, { type ClickEvent } from '../../services/websocket';
+import React, { useEffect, useRef } from 'react';
+import websocketService from '../../services/websocket';
 
 interface LiveClickCounterProps {
-    shortCode: string;
-    initialCount?: number;
+    clickCount: number;
+    isLive: boolean;
     className?: string;
 }
 
 const LiveClickCounter: React.FC<LiveClickCounterProps> = ({
-    shortCode,
-    initialCount = 0,
+    clickCount,
+    isLive,
     className = '',
 }) => {
-    const [clickCount, setClickCount] = useState(initialCount);
-    const [isLive, setIsLive] = useState(false);
-    const [recentClicks, setRecentClicks] = useState<ClickEvent[]>([]);
     const animationRef = useRef<HTMLDivElement>(null);
     const countRef = useRef<HTMLSpanElement>(null);
-    const liveTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+    const prevCountRef = useRef(clickCount);
 
-    const animateCounter = useCallback(() => {
-        if (countRef.current) {
-            countRef.current.classList.add('animate-pulse');
-            setTimeout(() => {
-                countRef.current?.classList.remove('animate-pulse');
-            }, 600);
-        }
-
-        if (animationRef.current) {
-            animationRef.current.classList.add('animate-bounce');
-            setTimeout(() => {
-                animationRef.current?.classList.remove('animate-bounce');
-            }, 600);
-        }
-    }, []);
-
+    // Animate when count changes
     useEffect(() => {
-        // Connect to WebSocket
-        websocketService.connect();
-
-        const handleClickEvent = (event: ClickEvent) => {
-            if (event.shortCode === shortCode) {
-                setClickCount((prev) => prev + 1);
-                setIsLive(true);
-
-                // Add to recent clicks (keep last 5)
-                setRecentClicks((prev) => [event, ...prev.slice(0, 4)]);
-
-                // Animate the counter
-                animateCounter();
-
-                // Clear existing timeout
-                if (liveTimeoutRef.current) {
-                    clearTimeout(liveTimeoutRef.current);
-                }
-
-                // Reset live indicator after 2 seconds
-                liveTimeoutRef.current = setTimeout(() => setIsLive(false), 2000);
+        if (clickCount > prevCountRef.current) {
+            if (countRef.current) {
+                countRef.current.classList.add('animate-pulse');
+                setTimeout(() => {
+                    countRef.current?.classList.remove('animate-pulse');
+                }, 600);
             }
-        };
 
-        // Subscribe to click events
-        websocketService.subscribeToClicks(shortCode, handleClickEvent);
-
-        // Cleanup on unmount
-        return () => {
-            websocketService.unsubscribeFromClicks(shortCode, handleClickEvent);
-            if (liveTimeoutRef.current) {
-                clearTimeout(liveTimeoutRef.current);
+            if (animationRef.current) {
+                animationRef.current.classList.add('animate-bounce');
+                setTimeout(() => {
+                    animationRef.current?.classList.remove('animate-bounce');
+                }, 600);
             }
-        };
-    }, [shortCode, animateCounter]);
+        }
+        prevCountRef.current = clickCount;
+    }, [clickCount]);
 
     const formatCount = (count: number): string => {
         if (count >= 1000000) {
@@ -102,10 +66,10 @@ const LiveClickCounter: React.FC<LiveClickCounterProps> = ({
                 <div className="relative">
                     <div
                         className={`w-2 h-2 rounded-full transition-colors duration-300 ${isLive
-                                ? 'bg-red-500'
-                                : status.connected
-                                    ? 'bg-green-400 dark:bg-green-500'
-                                    : 'bg-gray-400 dark:bg-gray-600'
+                            ? 'bg-red-500'
+                            : status.connected
+                                ? 'bg-green-400 dark:bg-green-500'
+                                : 'bg-gray-400 dark:bg-gray-600'
                             }`}
                     >
                         {isLive && (
@@ -150,13 +114,7 @@ const LiveClickCounter: React.FC<LiveClickCounterProps> = ({
                 <span className="text-sm text-gray-500 dark:text-gray-400">clicks</span>
             </div>
 
-            {/* Recent activity indicator */}
-            {recentClicks.length > 0 && (
-                <div className="hidden sm:flex items-center gap-1 text-xs text-gray-500 dark:text-gray-400">
-                    <span>•</span>
-                    <span>{recentClicks.length} recent</span>
-                </div>
-            )}
+
         </div>
     );
 };
