@@ -2,7 +2,7 @@ import React from 'react';
 
 interface PageHeaderProps {
     title: string;
-    subtitle?: string;
+    subtitle?: string | React.ReactNode;
     showBackButton?: boolean;
     onBackClick?: () => void;
     className?: string;
@@ -34,7 +34,7 @@ const PageHeader: React.FC<PageHeaderProps> = ({
                         {showBackButton && (
                             <button
                                 onClick={handleBackClick}
-                                className="p-1.5 sm:p-2 text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-white hover:bg-white dark:hover:bg-gray-800 rounded-lg transition-colors"
+                                className="p-1.5 sm:p-2 text-gray-600 cursor-pointer dark:text-gray-400 hover:text-gray-900 dark:hover:text-white hover:bg-white dark:hover:bg-gray-800 rounded-lg transition-colors"
                                 aria-label="Go back"
                             >
                                 <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">

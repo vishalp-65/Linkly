@@ -14,6 +14,7 @@ class WebSocketService {
     private reconnectAttempts = 0;
     private maxReconnectAttempts = 5;
     private reconnectDelay = 1000;
+    private activeSubscriptions: Map<string, Set<Function>> = new Map(); // Track active subscriptions
 
     connect(apiKey?: string): Socket {
         if (this.socket?.connected) {
@@ -86,29 +87,77 @@ class WebSocketService {
             return;
         }
 
-        // Subscribe to click events for this specific short code
-        this.socket.emit('subscribe', { shortCode });
+        // Check if this callback is already subscribed
+        const subscriptions = this.activeSubscriptions.get(shortCode);
+        if (subscriptions?.has(callback)) {
+            console.log(`Already subscribed to click events for ${shortCode}, skipping duplicate`);
+            return;
+        }
+
+        console.log(`Subscribing to click events for ${shortCode}`);
+
+        // Subscribe to click events for this specific short code (only if first subscriber)
+        if (!subscriptions || subscriptions.size === 0) {
+            this.socket.emit('subscribe', { shortCode });
+        }
+
+        // Create a wrapper that filters by shortCode to avoid cross-contamination
+        const wrappedCallback = (event: ClickEvent) => {
+            if (event.shortCode === shortCode) {
+                console.log('WebSocket received click event for', shortCode, event);
+                callback(event);
+            }
+        };
+
+        // Store the wrapper so we can remove it later
+        (callback as any).__wrapper = wrappedCallback;
+
+        // Track this subscription
+        if (!this.activeSubscriptions.has(shortCode)) {
+            this.activeSubscriptions.set(shortCode, new Set());
+        }
+        this.activeSubscriptions.get(shortCode)!.add(callback);
 
         // Listen for click events
-        this.socket.on('click', callback);
+        this.socket.on('click', wrappedCallback);
 
-        console.log(`Subscribed to click events for ${shortCode}`);
+        console.log(`Successfully subscribed to click events for ${shortCode} (total: ${this.activeSubscriptions.get(shortCode)!.size})`);
     }
 
     unsubscribeFromClicks(shortCode: string, callback?: (event: ClickEvent) => void): void {
         if (!this.socket) return;
 
-        // Unsubscribe from click events for this short code
-        this.socket.emit('unsubscribe', { shortCode });
-
-        // Remove the specific callback or all click listeners
+        // Remove the specific callback wrapper
         if (callback) {
-            this.socket.off('click', callback);
-        } else {
-            this.socket.off('click');
-        }
+            const wrapper = (callback as any).__wrapper;
+            if (wrapper) {
+                this.socket.off('click', wrapper);
+                delete (callback as any).__wrapper;
+            } else {
+                this.socket.off('click', callback);
+            }
 
-        console.log(`Unsubscribed from click events for ${shortCode}`);
+            // Remove from tracking
+            const subscriptions = this.activeSubscriptions.get(shortCode);
+            if (subscriptions) {
+                subscriptions.delete(callback);
+
+                // Only unsubscribe from server if no more callbacks for this shortCode
+                if (subscriptions.size === 0) {
+                    this.activeSubscriptions.delete(shortCode);
+                    this.socket.emit('unsubscribe', { shortCode });
+                    console.log(`Unsubscribed from click events for ${shortCode} (no more subscribers)`);
+                } else {
+                    console.log(`Removed callback for ${shortCode} (${subscriptions.size} remaining)`);
+                }
+            }
+        } else {
+            // Remove all callbacks for this shortCode
+            this.socket.off('click');
+            this.activeSubscriptions.delete(shortCode);
+            this.socket.emit('unsubscribe', { shortCode });
+            console.log(`Unsubscribed from all click events for ${shortCode}`);
+        }
     }
 
     disconnect(): void {
