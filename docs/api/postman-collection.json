@@ -1,0 +1,439 @@
+{
+  "info": {
+    "name": "URL Shortener API",
+    "description": "Complete API collection for URL Shortener service",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json",
+    "version": "1.0.0"
+  },
+  "auth": {
+    "type": "bearer",
+    "bearer": [
+      {
+        "key": "token",
+        "value": "{{access_token}}",
+        "type": "string"
+      }
+    ]
+  },
+  "variable": [
+    {
+      "key": "base_url",
+      "value": "https://api.urlshortener.com",
+      "type": "string"
+    },
+    {
+      "key": "access_token",
+      "value": "",
+      "type": "string"
+    },
+    {
+      "key": "refresh_token",
+      "value": "",
+      "type": "string"
+    },
+    {
+      "key": "short_code",
+      "value": "",
+      "type": "string"
+    }
+  ],
+  "item": [
+    {
+      "name": "Authentication",
+      "item": [
+        {
+          "name": "Register",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "if (pm.response.code === 201) {",
+                  "    const response = pm.response.json();",
+                  "    pm.collectionVariables.set('access_token', response.data.accessToken);",
+                  "    pm.collectionVariables.set('refresh_token', response.data.refreshToken);",
+                  "}"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "auth": {
+              "type": "noauth"
+            },
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"email\": \"user@example.com\",\n  \"password\": \"SecurePass123!\",\n  \"name\": \"John Doe\"\n}"
+            },
+            "url": {
+              "raw": "{{base_url}}/api/v1/auth/register",
+              "host": ["{{base_url}}"],
+              "path": ["api", "v1", "auth", "register"]
+            }
+          }
+        },
+        {
+          "name": "Login",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "if (pm.response.code === 200) {",
+                  "    const response = pm.response.json();",
+                  "    pm.collectionVariables.set('access_token', response.data.accessToken);",
+                  "    pm.collectionVariables.set('refresh_token', response.data.refreshToken);",
+                  "}"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "auth": {
+              "type": "noauth"
+            },
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"email\": \"user@example.com\",\n  \"password\": \"SecurePass123!\"\n}"
+            },
+            "url": {
+              "raw": "{{base_url}}/api/v1/auth/login",
+              "host": ["{{base_url}}"],
+              "path": ["api", "v1", "auth", "login"]
+            }
+          }
+        },
+        {
+          "name": "Refresh Token",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "if (pm.response.code === 200) {",
+                  "    const response = pm.response.json();",
+                  "    pm.collectionVariables.set('access_token', response.data.accessToken);",
+                  "}"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "auth": {
+              "type": "noauth"
+            },
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"refreshToken\": \"{{refresh_token}}\"\n}"
+            },
+            "url": {
+              "raw": "{{base_url}}/api/v1/auth/refresh-token",
+              "host": ["{{base_url}}"],
+              "path": ["api", "v1", "auth", "refresh-token"]
+            }
+          }
+        },
+        {
+          "name": "Get Profile",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{base_url}}/api/v1/auth/profile",
+              "host": ["{{base_url}}"],
+              "path": ["api", "v1", "auth", "profile"]
+            }
+          }
+        },
+        {
+          "name": "Logout",
+          "request": {
+            "method": "POST",
+            "header": [],
+            "url": {
+              "raw": "{{base_url}}/api/v1/auth/logout",
+              "host": ["{{base_url}}"],
+              "path": ["api", "v1", "auth", "logout"]
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "URL Management",
+      "item": [
+        {
+          "name": "Shorten URL",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "if (pm.response.code === 201) {",
+                  "    const response = pm.response.json();",
+                  "    pm.collectionVariables.set('short_code', response.data.shortCode);",
+                  "}"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"longUrl\": \"https://example.com/very/long/url/path\"\n}"
+            },
+            "url": {
+              "raw": "{{base_url}}/api/v1/url/shorten",
+              "host": ["{{base_url}}"],
+              "path": ["api", "v1", "url", "shorten"]
+            }
+          }
+        },
+        {
+          "name": "Shorten URL with Custom Alias",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"longUrl\": \"https://example.com/product/12345\",\n  \"customAlias\": \"myproduct\",\n  \"expiresAt\": \"2024-12-31T23:59:59Z\"\n}"
+            },
+            "url": {
+              "raw": "{{base_url}}/api/v1/url/shorten",
+              "host": ["{{base_url}}"],
+              "path": ["api", "v1", "url", "shorten"]
+            }
+          }
+        },
+        {
+          "name": "Get All URLs",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{base_url}}/api/v1/url/get-all?page=1&limit=20&status=all&sortBy=createdAt&sortOrder=desc",
+              "host": ["{{base_url}}"],
+              "path": ["api", "v1", "url", "get-all"],
+              "query": [
+                {
+                  "key": "page",
+                  "value": "1"
+                },
+                {
+                  "key": "limit",
+                  "value": "20"
+                },
+                {
+                  "key": "status",
+                  "value": "all"
+                },
+                {
+                  "key": "sortBy",
+                  "value": "createdAt"
+                },
+                {
+                  "key": "sortOrder",
+                  "value": "desc"
+                }
+              ]
+            }
+          }
+        },
+        {
+          "name": "Check Alias Availability",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{base_url}}/api/v1/url/check-alias?alias=myproduct",
+              "host": ["{{base_url}}"],
+              "path": ["api", "v1", "url", "check-alias"],
+              "query": [
+                {
+                  "key": "alias",
+                  "value": "myproduct"
+                }
+              ]
+            }
+          }
+        },
+        {
+          "name": "Get URL Stats",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{base_url}}/api/v1/url/{{short_code}}/stats",
+              "host": ["{{base_url}}"],
+              "path": ["api", "v1", "url", "{{short_code}}", "stats"]
+            }
+          }
+        },
+        {
+          "name": "Delete URL",
+          "request": {
+            "method": "DELETE",
+            "header": [],
+            "url": {
+              "raw": "{{base_url}}/api/v1/url/{{short_code}}",
+              "host": ["{{base_url}}"],
+              "path": ["api", "v1", "url", "{{short_code}}"]
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "Analytics",
+      "item": [
+        {
+          "name": "Get Analytics",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{base_url}}/api/v1/analytics/{{short_code}}?startDate=2024-11-01T00:00:00Z&endDate=2024-11-09T23:59:59Z&granularity=day",
+              "host": ["{{base_url}}"],
+              "path": ["api", "v1", "analytics", "{{short_code}}"],
+              "query": [
+                {
+                  "key": "startDate",
+                  "value": "2024-11-01T00:00:00Z"
+                },
+                {
+                  "key": "endDate",
+                  "value": "2024-11-09T23:59:59Z"
+                },
+                {
+                  "key": "granularity",
+                  "value": "day"
+                }
+              ]
+            }
+          }
+        },
+        {
+          "name": "Get Realtime Analytics",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{base_url}}/api/v1/analytics/{{short_code}}/realtime?minutes=5",
+              "host": ["{{base_url}}"],
+              "path": ["api", "v1", "analytics", "{{short_code}}", "realtime"],
+              "query": [
+                {
+                  "key": "minutes",
+                  "value": "5"
+                }
+              ]
+            }
+          }
+        },
+        {
+          "name": "Get Global Analytics",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{base_url}}/api/v1/analytics/global/summary",
+              "host": ["{{base_url}}"],
+              "path": ["api", "v1", "analytics", "global", "summary"]
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "User Preferences",
+      "item": [
+        {
+          "name": "Get Preferences",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{base_url}}/api/v1/preferences/preferences",
+              "host": ["{{base_url}}"],
+              "path": ["api", "v1", "preferences", "preferences"]
+            }
+          }
+        },
+        {
+          "name": "Update Preferences",
+          "request": {
+            "method": "PUT",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"duplicateUrlStrategy\": \"generate_new\",\n  \"defaultExpiryDays\": 30,\n  \"emailNotifications\": true\n}"
+            },
+            "url": {
+              "raw": "{{base_url}}/api/v1/preferences/preferences",
+              "host": ["{{base_url}}"],
+              "path": ["api", "v1", "preferences", "preferences"]
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "Health",
+      "item": [
+        {
+          "name": "Health Check",
+          "request": {
+            "auth": {
+              "type": "noauth"
+            },
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{base_url}}/health",
+              "host": ["{{base_url}}"],
+              "path": ["health"]
+            }
+          }
+        }
+      ]
+    }
+  ]
+}

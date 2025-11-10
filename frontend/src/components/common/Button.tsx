@@ -6,6 +6,7 @@ export interface ButtonProps extends React.ButtonHTMLAttributes<HTMLButtonElemen
     loading?: boolean;
     leftIcon?: React.ReactNode;
     rightIcon?: React.ReactNode;
+    showFocusRing?: boolean; // 👈 New prop
     children: React.ReactNode;
 }
 
@@ -18,9 +19,13 @@ const Button: React.FC<ButtonProps> = ({
     children,
     className = '',
     disabled,
+    showFocusRing = true, // 👈 Default: show focus ring
     ...props
 }) => {
-    const baseClasses = 'inline-flex items-center justify-center font-medium rounded-md transition-all duration-200 focus:outline-none cursor-pointer focus:ring-2 focus:ring-offset-2';
+    const baseClasses = `
+        inline-flex items-center justify-center font-medium rounded-md transition-all duration-200 cursor-pointer
+        ${showFocusRing ? 'focus:outline-none focus:ring-2 focus:ring-offset-2' : 'focus:outline-none focus:ring-0 focus:ring-offset-0'}
+    `;
 
     const variantClasses = {
         primary: 'bg-gradient-to-r from-blue-600 to-blue-700 text-white hover:from-blue-700 hover:to-blue-800 focus:ring-blue-500 shadow-md hover:shadow-lg dark:from-blue-500 dark:to-blue-600 dark:hover:from-blue-600 dark:hover:to-blue-700',
@@ -40,12 +45,12 @@ const Button: React.FC<ButtonProps> = ({
     return (
         <button
             className={`
-        ${baseClasses}
-        ${variantClasses[variant]}
-        ${sizeClasses[size]}
-        ${isDisabled ? 'opacity-50 cursor-not-allowed' : ''}
-        ${className}
-      `}
+                ${baseClasses}
+                ${variantClasses[variant]}
+                ${sizeClasses[size]}
+                ${isDisabled ? 'opacity-50 cursor-not-allowed' : ''}
+                ${className}
+            `}
             disabled={isDisabled}
             aria-disabled={isDisabled}
             {...props}

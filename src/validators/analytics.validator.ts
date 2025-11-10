@@ -6,11 +6,11 @@ export const analyticsValidators = {
     // Validate shortCode parameter
     shortCode: Joi.object({
         shortCode: Joi.string()
-            .pattern(/^[a-zA-Z0-9_-]{3,10}$/)
+            .pattern(/^[a-zA-Z0-9_-]{3,30}$/)
             .required()
             .messages({
                 "string.pattern.base":
-                    "Short code must be 3-10 characters long and contain only letters, numbers, hyphens, and underscores",
+                    "Short code must be 3-30 characters long and contain only letters, numbers, hyphens, and underscores",
                 "any.required": "Short code is required"
             })
     }),

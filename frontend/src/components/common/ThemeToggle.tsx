@@ -7,6 +7,7 @@ interface ThemeToggleProps {
   showLabel?: boolean;
   size?: 'sm' | 'md' | 'lg';
   showIcon?: boolean;
+  iconClass?: string;
 }
 
 /**
@@ -17,6 +18,7 @@ const ThemeToggle: React.FC<ThemeToggleProps> = ({
   showLabel = false,
   size = 'md',
   showIcon = true,
+  iconClass = "h-4 w-4",
 }) => {
   const { theme, resolvedTheme, setTheme } = useTheme();
 
@@ -34,7 +36,7 @@ const ThemeToggle: React.FC<ThemeToggleProps> = ({
     if (resolvedTheme === 'dark') {
       return (
         <svg
-          className="w-4 h-4"
+          className={iconClass}
           fill="none"
           stroke="currentColor"
           viewBox="0 0 24 24"
@@ -51,7 +53,7 @@ const ThemeToggle: React.FC<ThemeToggleProps> = ({
     }
     return (
       <svg
-        className="w-4 h-4"
+        className={iconClass}
         fill="none"
         stroke="currentColor"
         viewBox="0 0 24 24"
@@ -82,10 +84,11 @@ const ThemeToggle: React.FC<ThemeToggleProps> = ({
         className={className}
         aria-label={getLabel()}
         title={getLabel()}
+        showFocusRing={false}
       >
         {showIcon && getIcon()}
         {showLabel && (
-          <span className="ml-2">
+          <span>
             {resolvedTheme === 'light' ? 'Dark' : 'Light'}
           </span>
         )}

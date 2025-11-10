@@ -7,14 +7,18 @@ import { authMiddleware } from "../../middleware/authMiddleware"
 import {
     validateParams,
     validateQuery,
-    validateRequest
+    validateRequest,
 } from "../../middleware/validationMiddleware"
 
 const router = Router()
 const urlController = new UrlController()
 const redirectController = new RedirectController()
 
+// ---------------------------------------------
 // URL Management Routes
+// ---------------------------------------------
+
+// Create Short URL
 router.post(
     "/shorten",
     authMiddleware.optionalAuthenticate,
@@ -22,13 +26,7 @@ router.post(
     asyncHandler(urlController.createShortUrl)
 )
 
-router.get(
-    "/:shortCode/stats",
-    authMiddleware.authenticate,
-    // validateRequest(urlValidators.shortCode),
-    asyncHandler(urlController.getUrlStats)
-)
-
+// Get All URLs (keep before dynamic routes)
 router.get(
     "/get-all",
     authMiddleware.authenticate,
@@ -36,12 +34,29 @@ router.get(
     asyncHandler(urlController.getAllUrl)
 )
 
+// Check custom alias availability
 router.get(
     "/check-alias",
     authMiddleware.authenticate,
     asyncHandler(urlController.checkAliasAvailability)
 )
 
+// Get URL stats (authenticated)
+router.get(
+    "/:shortCode/stats",
+    authMiddleware.authenticate,
+    validateParams(urlValidators.shortCode),
+    asyncHandler(urlController.getUrlStats)
+)
+
+// Resolve URL (used internally or by redirect service)
+router.get(
+    "/resolve/:shortCode",
+    validateParams(urlValidators.shortCode),
+    asyncHandler(urlController.resolveUrl)
+)
+
+// Delete Short URL
 router.delete(
     "/:shortCode",
     authMiddleware.authenticate,
@@ -49,15 +64,17 @@ router.delete(
     asyncHandler(urlController.deleteUrl)
 )
 
+// Get long/original URL by shortCode (keep last)
 router.get(
-    "/resolve/:shortCode",
+    "/:shortCode",
     validateParams(urlValidators.shortCode),
-    asyncHandler(urlController.resolveUrl)
+    asyncHandler(urlController.getLongURL)
 )
 
-// Redirect Service Routes
+// ---------------------------------------------
+// Redirect Service Routes (should not conflict)
+// ---------------------------------------------
 router.get("/redirect/stats", asyncHandler(redirectController.getStats))
-
 router.get("/redirect/health", asyncHandler(redirectController.healthCheck))
 
 export default router

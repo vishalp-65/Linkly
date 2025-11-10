@@ -163,7 +163,7 @@ const Navbar: React.FC = () => {
                             {/* Guest User - Show Login/Signup */}
                             {isGuest && (
                                 <>
-                                    <ThemeToggle size="md" />
+                                    <ThemeToggle size="md" iconClass='w-5 h-5' />
                                     <Link
                                         to="/login"
                                         className="px-4 py-2 text-sm font-medium text-gray-700 dark:text-gray-300 hover:text-gray-900 dark:hover:text-white transition-colors"
@@ -211,20 +211,20 @@ const Navbar: React.FC = () => {
                                                 <p className="text-xs text-gray-500 dark:text-gray-400 mt-0.5">{user?.email}</p>
                                             </div>
 
-                                            <div className="py-1">
+                                            <div onClick={() => setShowUserMenu(false)} className="py-1">
                                                 <ThemeToggle
                                                     showLabel
                                                     size="md"
-                                                    className="w-full justify-start px-4 py-2.5
-                                                            text-gray-700 dark:text-gray-300 
-                                                            hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors 
+                                                    className="flex items-center gap-3 w-full justify-start px-4 py-2.5
+                                                            text-gray-700 dark:text-gray-300 rounded-none 
+                                                            hover:bg-gray-200 dark:hover:bg-gray-700 transition-colors 
                                                             focus:outline-none focus:ring-transparent focus:ring-offset-0"
                                                 />
 
                                                 <Link
                                                     to="/settings"
                                                     onClick={() => setShowUserMenu(false)}
-                                                    className="flex items-center w-full px-4 py-2.5 text-sm text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors"
+                                                    className="flex items-center w-full px-4 py-2.5 text-sm text-gray-700 dark:text-gray-300 hover:bg-gray-200 dark:hover:bg-gray-700 transition-colors"
                                                 >
                                                     <svg className="w-4 h-4 mr-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                                         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
@@ -255,7 +255,7 @@ const Navbar: React.FC = () => {
 
                         {/* --- Mobile menu button --- */}
                         <div className="md:hidden flex items-center space-x-2">
-                            {isGuest && <ThemeToggle size="sm" />}
+                            {isGuest && <ThemeToggle size="md" iconClass='w-5 h-5' />}
                             <button
                                 ref={mobileMenuButtonRef}
                                 onClick={() => setShowMobileMenu(!showMobileMenu)}
@@ -289,7 +289,7 @@ const Navbar: React.FC = () => {
                                     <Link
                                         to="/login"
                                         onClick={() => setShowMobileMenu(false)}
-                                        className="flex items-center px-4 py-3 rounded-lg text-base font-medium text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors"
+                                        className="flex items-center justify-center bg-gray-300/60 dark:bg-gray-800 px-4 py-3 rounded-lg text-base font-medium text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors"
                                     >
                                         Sign In
                                     </Link>
@@ -368,14 +368,16 @@ const Navbar: React.FC = () => {
                                             </div>
                                         </div>
 
-                                        <ThemeToggle
-                                            showLabel
-                                            size="md"
-                                            className="w-full justify-start px-4 py-3
-                                                    text-gray-700 dark:text-gray-300 
-                                                    hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors 
-                                                    focus:outline-none focus:ring-transparent focus:ring-offset-0 rounded-lg"
-                                        />
+                                        <div onClick={() => setShowMobileMenu(false)}>
+                                            <ThemeToggle
+                                                showLabel
+                                                size="md"
+                                                className="w-full justify-start px-4 py-3
+                                            text-gray-700 dark:text-gray-300 
+                                            hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors 
+                                            focus:outline-none focus:ring-transparent focus:ring-offset-0 rounded-lg"
+                                            />
+                                        </div>
 
                                         <button
                                             onClick={() => {

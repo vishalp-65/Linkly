@@ -4,6 +4,7 @@ import { db } from "../config/database"
 import { logger } from "../config/logger"
 import { ClickEventPayload } from "./analyticsEventProducer"
 import { metricsService } from "./metricsService"
+import { analyticsCacheService } from "./analyticsCacheService"
 
 /**
  * Analytics Event Consumer
@@ -33,10 +34,11 @@ class AnalyticsEventConsumer {
             try {
                 await kafka.connect()
             } catch (error) {
-                logger.error("Failed to connect to Kafka for analytics consumer", {
+                logger.warn("Kafka not available for analytics consumer, service will not start", {
                     error: error instanceof Error ? error.message : "Unknown error"
                 })
-                throw error
+                // Don't throw - let the service continue without this consumer
+                return
             }
 
             // Create consumer
@@ -117,13 +119,21 @@ class AnalyticsEventConsumer {
                 message.value.toString()
             )
 
+            console.log("ANALYTICS CONSUMER: Processing message", {
+                shortCode: event.shortCode,
+                eventId: event.eventId
+            })
+
             // Add to buffer
             this.eventBuffer.push(event)
 
-            // Check if buffer is full
-            if (this.eventBuffer.length >= this.maxBufferSize) {
-                await this.flushBuffer()
-            }
+            console.log("ANALYTICS CONSUMER: Event added to buffer", {
+                bufferSize: this.eventBuffer.length,
+                maxBufferSize: this.maxBufferSize
+            })
+
+            // Flush immediately for real-time updates (don't wait for buffer to fill)
+            await this.flushBuffer()
 
             logger.debug("Processed analytics event", {
                 shortCode: event.shortCode,
@@ -190,6 +200,22 @@ class AnalyticsEventConsumer {
             console.log("ANALYTICS CONSUMER: Successfully inserted events to database", {
                 eventCount: eventsToInsert.length
             })
+
+            // Invalidate analytics cache for affected short codes
+            // NOTE: WebSocket events are already emitted by the producer, so we don't emit them here
+            const uniqueShortCodes = new Set<string>()
+            for (const event of eventsToInsert) {
+                uniqueShortCodes.add(event.shortCode)
+            }
+
+            for (const shortCode of uniqueShortCodes) {
+                analyticsCacheService.invalidateAnalytics(shortCode).catch((cacheError) => {
+                    logger.warn("Failed to invalidate analytics cache from consumer", {
+                        shortCode,
+                        error: cacheError instanceof Error ? cacheError.message : "Unknown error"
+                    })
+                })
+            }
 
             // Record success metrics
             metricsService.recordAnalyticsEvent("click", "success")

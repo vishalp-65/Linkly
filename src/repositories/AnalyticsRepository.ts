@@ -580,7 +580,13 @@ export class AnalyticsRepository {
     }
 
     async getRealtimeAnalytics(shortCode: string): Promise<{
-        recentClicks: { timestamp: string; count: number }[]
+        recentClicks: {
+            timestamp: string;
+            count: number;
+            country?: string;
+            device?: string;
+            browser?: string;
+        }[]
         currentHourClicks: number
         last24HoursClicks: number
     }> {
@@ -603,14 +609,15 @@ export class AnalyticsRepository {
                     client.query(
                         `
                     SELECT 
-                        DATE_TRUNC('minute', clicked_at) as minute,
-                        COUNT(*) as count
+                        clicked_at as timestamp,
+                        country_code as country,
+                        device_type as device,
+                        browser
                     FROM analytics_events 
                     WHERE short_code = $1 
                       AND clicked_at >= $2::timestamptz
-                    GROUP BY DATE_TRUNC('minute', clicked_at)
-                    ORDER BY minute DESC
-                    LIMIT 5
+                    ORDER BY clicked_at DESC
+                    LIMIT 10
                 `,
                         [shortCode, fiveMinutesAgo.toISOString()]
                     ),
@@ -638,8 +645,11 @@ export class AnalyticsRepository {
 
             return {
                 recentClicks: recentClicksResult.rows.map((row: any) => ({
-                    timestamp: row.minute,
-                    count: parseInt(row.count) || 0
+                    timestamp: row.timestamp,
+                    count: 1, // Each row is a single click
+                    country: row.country || 'Unknown',
+                    device: row.device || 'Unknown',
+                    browser: row.browser || 'Unknown'
                 })),
                 currentHourClicks:
                     parseInt(currentHourResult.rows[0].count) || 0,

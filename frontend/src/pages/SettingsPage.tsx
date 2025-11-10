@@ -48,7 +48,7 @@ const SettingsPage: React.FC = () => {
                   <button
                     key={tab.id}
                     onClick={() => setActiveTab(tab.id)}
-                    className={`w-full flex items-center px-4 py-3 text-left text-sm font-medium rounded-lg transition-all duration-200 ${activeTab === tab.id
+                    className={`w-full flex cursor-pointer items-center px-4 py-3 text-left text-sm font-medium rounded-lg transition-all duration-200 ${activeTab === tab.id
                       ? 'bg-gradient-to-r from-blue-50 to-indigo-50 dark:from-blue-900/50 dark:to-indigo-900/50 text-blue-700 dark:text-blue-300 border-l-4 border-blue-700 dark:border-blue-500 shadow-sm'
                       : 'text-gray-600 dark:text-gray-400 hover:bg-gray-50 dark:hover:bg-gray-700 hover:text-gray-900 dark:hover:text-gray-200'
                       }`}
@@ -63,7 +63,7 @@ const SettingsPage: React.FC = () => {
 
           {/* Main Content */}
           <div className="flex-1">{renderContent}</div>
-          P</div>
+        </div>
       </div>
     </div>
   );

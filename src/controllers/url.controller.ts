@@ -564,4 +564,55 @@ export class UrlController {
             next(error)
         }
     }
+
+    getLongURL = async (
+        req: Request,
+        res: Response,
+        next: NextFunction
+    ): Promise<void> => {
+        const startTime = Date.now()
+        const { shortCode } = req.params
+
+        try {
+            if (!shortCode) {
+                throw ApiError.badRequest(
+                    "Short code is required",
+                    "MISSING_SHORT_CODE"
+                )
+            }
+
+            const urlMapping = await this.urlRepository.findById(shortCode)
+
+            if (!urlMapping || urlMapping.is_deleted) {
+                throw ApiError.notFound(
+                    "The specified short URL does not exist",
+                    "URL_NOT_FOUND"
+                )
+            }
+
+            const longURL = {
+                long_url: urlMapping.long_url,
+                short_code: urlMapping.short_code,
+            }
+
+            const responseTime = Date.now() - startTime
+
+            logger.info("Long URL retrieved", {
+                shortCode,
+                responseTime
+            })
+
+            ApiResponse.success(res, longURL, 200, { responseTime })
+        } catch (error) {
+            const responseTime = Date.now() - startTime
+
+            logger.error("Failed to get long URL", {
+                shortCode,
+                error: error instanceof Error ? error.message : "Unknown error",
+                responseTime
+            })
+
+            next(error)
+        }
+    }
 }

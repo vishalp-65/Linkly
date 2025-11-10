@@ -45,7 +45,6 @@ export interface UrlCreationError {
 
 export class URLShortenerService {
     private urlRepository: URLRepository
-    private userRepository: UserRepository
     private idGenerator: IDGenerator
     private aliasChecker: AliasChecker
     private cacheService: URLCacheService
@@ -61,7 +60,6 @@ export class URLShortenerService {
         cacheService?: URLCacheService
     ) {
         this.urlRepository = urlRepository
-        this.userRepository = userRepository
         this.idGenerator = idGenerator
         this.aliasChecker = new AliasChecker(urlRepository)
         this.cacheService = cacheService || new URLCacheService()
@@ -153,7 +151,6 @@ export class URLShortenerService {
             return result
         } catch (error) {
             this.handleCreationError(error, request, startTime)
-            throw error // TypeScript will infer this never executes due to handleCreationError throwing
         }
     }
 

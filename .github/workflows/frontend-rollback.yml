@@ -1,0 +1,158 @@
+name: Rollback Frontend Deployment
+
+on:
+  workflow_dispatch:
+    inputs:
+      environment:
+        description: 'Environment to rollback'
+        required: true
+        type: choice
+        options:
+          - staging
+          - production
+      backup_prefix:
+        description: 'Backup prefix to restore (e.g., backups/20240101-120000)'
+        required: true
+      confirm:
+        description: 'Type "ROLLBACK" to confirm'
+        required: true
+
+jobs:
+  validate-rollback:
+    name: Validate Rollback Request
+    runs-on: ubuntu-latest
+    steps:
+      - name: Validate confirmation
+        run: |
+          if [ "${{ github.event.inputs.confirm }}" != "ROLLBACK" ]; then
+            echo "❌ Rollback cancelled: Confirmation text must be 'ROLLBACK'"
+            exit 1
+          fi
+          echo "✅ Rollback confirmed"
+      
+      - name: Log rollback details
+        run: |
+          echo "Environment: ${{ github.event.inputs.environment }}"
+          echo "Backup prefix: ${{ github.event.inputs.backup_prefix }}"
+          echo "Triggered by: ${{ github.actor }}"
+          echo "Timestamp: $(date -u +"%Y-%m-%d %H:%M:%S UTC")"
+
+  rollback:
+    name: Rollback to Previous Version
+    runs-on: ubuntu-latest
+    needs: validate-rollback
+    environment:
+      name: ${{ github.event.inputs.environment }}
+    
+    steps:
+      - name: Configure AWS credentials
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+          aws-region: us-east-1
+      
+      - name: Set environment variables
+        run: |
+          if [ "${{ github.event.inputs.environment }}" == "production" ]; then
+            echo "S3_BUCKET=${{ secrets.PRODUCTION_S3_BUCKET }}" >> $GITHUB_ENV
+            echo "CLOUDFRONT_DIST_ID=${{ secrets.PRODUCTION_CLOUDFRONT_DIST_ID }}" >> $GITHUB_ENV
+            echo "DOMAIN=${{ secrets.PRODUCTION_DOMAIN }}" >> $GITHUB_ENV
+          else
+            echo "S3_BUCKET=${{ secrets.STAGING_S3_BUCKET }}" >> $GITHUB_ENV
+            echo "CLOUDFRONT_DIST_ID=${{ secrets.STAGING_CLOUDFRONT_DIST_ID }}" >> $GITHUB_ENV
+            echo "DOMAIN=${{ secrets.STAGING_CLOUDFRONT_DOMAIN }}" >> $GITHUB_ENV
+          fi
+      
+      - name: Verify backup exists
+        run: |
+          echo "Verifying backup exists..."
+          BACKUP_COUNT=$(aws s3 ls s3://${{ env.S3_BUCKET }}/${{ github.event.inputs.backup_prefix }}/ | wc -l)
+          
+          if [ $BACKUP_COUNT -eq 0 ]; then
+            echo "❌ Backup not found at: ${{ github.event.inputs.backup_prefix }}"
+            exit 1
+          fi
+          
+          echo "✅ Backup verified ($BACKUP_COUNT files)"
+      
+      - name: Create backup of current state
+        run: |
+          echo "Creating backup of current state before rollback..."
+          ROLLBACK_BACKUP_PREFIX="backups/pre-rollback-$(date +%Y%m%d-%H%M%S)"
+          
+          aws s3 sync s3://${{ env.S3_BUCKET }}/ \
+            s3://${{ env.S3_BUCKET }}/$ROLLBACK_BACKUP_PREFIX/ \
+            --exclude "backups/*"
+          
+          echo "✅ Current state backed up to: $ROLLBACK_BACKUP_PREFIX"
+          echo "rollback_backup_prefix=$ROLLBACK_BACKUP_PREFIX" >> $GITHUB_OUTPUT
+        id: current_backup
+      
+      - name: Restore from backup
+        run: |
+          echo "Restoring from backup: ${{ github.event.inputs.backup_prefix }}"
+          
+          # Delete current files (except backups)
+          aws s3 rm s3://${{ env.S3_BUCKET }}/ \
+            --recursive \
+            --exclude "backups/*"
+          
+          # Restore from backup
+          aws s3 sync s3://${{ env.S3_BUCKET }}/${{ github.event.inputs.backup_prefix }}/ \
+            s3://${{ env.S3_BUCKET }}/ \
+            --delete
+          
+          echo "✅ Files restored from backup"
+      
+      - name: Invalidate CloudFront cache
+        run: |
+          echo "Invalidating CloudFront cache..."
+          INVALIDATION_ID=$(aws cloudfront create-invalidation \
+            --distribution-id ${{ env.CLOUDFRONT_DIST_ID }} \
+            --paths "/*" \
+            --query 'Invalidation.Id' \
+            --output text)
+          
+          echo "CloudFront invalidation created: $INVALIDATION_ID"
+          echo "invalidation_id=$INVALIDATION_ID" >> $GITHUB_OUTPUT
+        id: invalidation
+      
+      - name: Wait for invalidation to complete
+        run: |
+          echo "Waiting for CloudFront invalidation to complete..."
+          aws cloudfront wait invalidation-completed \
+            --distribution-id ${{ env.CLOUDFRONT_DIST_ID }} \
+            --id ${{ steps.invalidation.outputs.invalidation_id }}
+          
+          echo "✅ CloudFront cache invalidated"
+      
+      - name: Verify rollback
+        run: |
+          echo "Verifying rollback..."
+          
+          # Wait for changes to propagate
+          sleep 10
+          
+          # Test if the site is accessible
+          HTTP_STATUS=$(curl -s -o /dev/null -w "%{http_code}" https://${{ env.DOMAIN }})
+          if [ $HTTP_STATUS -eq 200 ]; then
+            echo "✅ Site is accessible after rollback (HTTP $HTTP_STATUS)"
+          else
+            echo "❌ Site returned HTTP $HTTP_STATUS after rollback"
+            exit 1
+          fi
+      
+      - name: Rollback summary
+        if: always()
+        run: |
+          echo "=========================================="
+          echo "Rollback Summary"
+          echo "=========================================="
+          echo "Status: ${{ job.status }}"
+          echo "Environment: ${{ github.event.inputs.environment }}"
+          echo "Restored from: ${{ github.event.inputs.backup_prefix }}"
+          echo "Current state backup: ${{ steps.current_backup.outputs.rollback_backup_prefix }}"
+          echo "Triggered by: ${{ github.actor }}"
+          echo "URL: https://${{ env.DOMAIN }}"
+          echo "=========================================="

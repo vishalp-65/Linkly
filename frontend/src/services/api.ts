@@ -4,6 +4,7 @@ import type { RootState } from '../store';
 import type {
   ApiResponse,
   AuthTokens,
+  LongURL,
   PaginatedResponse,
   URLItem,
   URLListParams,
@@ -309,6 +310,13 @@ export const api = createApi({
       query: (shortCode) => `/url/${shortCode}/stats`,
     }),
 
+    getLongUrlByShortCode: builder.query<
+      ApiResponse<LongURL>,
+      string
+    >({
+      query: (shortCode) => `/url/${shortCode}`,
+    }),
+
     checkAliasAvailability: builder.query<
       ApiResponse<{
         isAvailable: boolean;
@@ -379,14 +387,14 @@ export const api = createApi({
         params: {
           ...(dateFrom && { date_from: dateFrom }),
           ...(dateTo && { date_to: dateTo }),
-        },
+        }
       }),
       providesTags: (_result, _error, { shortCode }) => [
         { type: 'Analytics', id: shortCode },
         'Analytics',
       ],
-      // Refetch analytics when URLs are modified
-      keepUnusedDataFor: 300, // 5 minutes
+      // Disable RTK Query caching for analytics
+      keepUnusedDataFor: 300,
     }),
 
     getRealtimeAnalytics: builder.query<
@@ -400,10 +408,14 @@ export const api = createApi({
       }>,
       string
     >({
-      query: (shortCode) => `/analytics/${shortCode}/realtime`,
+      query: (shortCode) => ({
+        url: `/analytics/${shortCode}/realtime`,
+      }),
       providesTags: (_result, _error, shortCode) => [
         { type: 'Analytics', id: `${shortCode}-realtime` },
       ],
+      // Keep data for 5 seconds
+      keepUnusedDataFor: 30,
     }),
 
     getGlobalAnalytics: builder.query<
@@ -423,8 +435,8 @@ export const api = createApi({
         },
       }),
       providesTags: ['Analytics', 'URLs'],
-      // Refetch global analytics when URLs change
-      keepUnusedDataFor: 600, // 10 minutes
+      // Disable RTK Query caching for global analytics
+      keepUnusedDataFor: 600,
     }),
   }),
 });
@@ -455,6 +467,7 @@ export const {
   useGetUserUrlsQuery,
   useDeleteUrlMutation,
   useResolveUrlQuery,
+  useGetLongUrlByShortCodeQuery,
   useGetUrlByShortCodeQuery,
   // Analytics
   useGetAnalyticsQuery,

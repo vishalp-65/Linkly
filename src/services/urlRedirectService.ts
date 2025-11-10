@@ -4,6 +4,7 @@ import { MultiLayerCacheService } from "./multiLayerCacheService"
 import { URLRepository } from "../repositories/URLRepository"
 import { analyticsEventProducer } from "./analyticsEventProducer"
 import { directAnalyticsService } from "./directAnalyticsService"
+import { geoipService } from "./geoipService"
 import { logger } from "../config/logger"
 import { metricsService } from "./metricsService"
 import {
@@ -83,6 +84,7 @@ export class URLRedirectService {
                 "url_shortener.short_code": shortCode,
                 "cache.operation": "lookup"
             })
+
             // Lookup URL mapping using multi-layer cache
             const lookupResult = await this.cacheService.lookupUrl(shortCode)
             const urlMapping = lookupResult.urlMapping
@@ -106,8 +108,6 @@ export class URLRedirectService {
                 this.stats.notFoundErrors++
                 const latency = Date.now() - startTime
                 this.updateAverageLatency(latency)
-
-                // Record metrics
                 metricsService.recordUrlRedirect("404", false, latency)
 
                 logger.info("URL not found", {
@@ -116,6 +116,11 @@ export class URLRedirectService {
                     userAgent: req.get("User-Agent"),
                     latency
                 })
+
+                // Prevent caching of 404 responses
+                res.setHeader('Cache-Control', 'no-store, no-cache, must-revalidate, private')
+                res.setHeader('Pragma', 'no-cache')
+                res.setHeader('Expires', '0')
 
                 res.status(404).json({
                     error: "URL not found",
@@ -138,8 +143,6 @@ export class URLRedirectService {
                 this.stats.notFoundErrors++
                 const latency = Date.now() - startTime
                 this.updateAverageLatency(latency)
-
-                // Record metrics
                 metricsService.recordUrlRedirect("404", false, latency)
 
                 logger.info("URL is deleted", {
@@ -148,6 +151,11 @@ export class URLRedirectService {
                     ip: this.getClientIP(req),
                     latency
                 })
+
+                // Prevent caching of 404 responses
+                res.setHeader('Cache-Control', 'no-store, no-cache, must-revalidate, private')
+                res.setHeader('Pragma', 'no-cache')
+                res.setHeader('Expires', '0')
 
                 res.status(404).json({
                     error: "URL not found",
@@ -170,18 +178,13 @@ export class URLRedirectService {
                 this.stats.expiredErrors++
                 const latency = Date.now() - startTime
                 this.updateAverageLatency(latency)
-
-                // Record metrics
                 metricsService.recordUrlRedirect("410", false, latency)
 
                 // Mark expired URL in cache to prevent repeated DB queries
-                await this.markExpiredInCache(shortCode).catch((error) => {
+                this.markExpiredInCache(shortCode).catch((error) => {
                     logger.warn("Failed to mark expired URL in cache", {
                         shortCode,
-                        error:
-                            error instanceof Error
-                                ? error.message
-                                : "Unknown error"
+                        error: error instanceof Error ? error.message : "Unknown error"
                     })
                 })
 
@@ -191,6 +194,11 @@ export class URLRedirectService {
                     ip: this.getClientIP(req),
                     latency
                 })
+
+                // Prevent caching of 410 responses
+                res.setHeader('Cache-Control', 'no-store, no-cache, must-revalidate, private')
+                res.setHeader('Pragma', 'no-cache')
+                res.setHeader('Expires', '0')
 
                 res.status(410).json({
                     error: "URL expired",
@@ -219,112 +227,29 @@ export class URLRedirectService {
             const cacheHit = lookupResult.source !== "database"
             metricsService.recordUrlRedirect("301", cacheHit, latency)
 
-            console.log("REDIRECT: Starting analytics processing for", shortCode)
+            // CRITICAL: Set cache-control headers to prevent browser caching of redirects
+            // This ensures every click is tracked for analytics
+            res.setHeader('Cache-Control', 'no-store, no-cache, must-revalidate, private')
+            res.setHeader('Pragma', 'no-cache')
+            res.setHeader('Expires', '0')
 
-            // Update access tracking asynchronously (don't block redirect)
-            this.updateAccessTracking(shortCode, urlMapping).catch((error) => {
-                logger.error("Failed to update access tracking", {
-                    shortCode,
-                    error:
-                        error instanceof Error ? error.message : "Unknown error"
-                })
-            })
-
-            // Publish analytics event asynchronously (don't block redirect)
-            // Create child span for analytics
-            const analyticsSpan = createChildSpan("analytics.publish_event", {
-                "url_shortener.short_code": shortCode,
-                "analytics.event_type": "click"
-            })
-
-            // Extract analytics data from request
-            const userAgent = req.get("User-Agent") || ""
-            const deviceInfo = this.parseUserAgent(userAgent)
-
-            const analyticsData = {
-                short_code: shortCode,
-                ip_address: this.getClientIP(req),
-                user_agent: userAgent,
-                referrer: req.get("Referer"),
-                device_type: deviceInfo.device,
-                browser: deviceInfo.browser,
-                os: deviceInfo.os,
-                clicked_at: new Date()
-            }
-
-            console.log("ANALYTICS: Publishing click event", { shortCode, analyticsData })
-            console.log("ANALYTICS: Producer ready?", this.analyticsService.getBufferStats().isProducerReady)
-
-            // Try Kafka first, fallback to direct database insertion
-            const publishPromise = this.analyticsService.getBufferStats().isProducerReady
-                ? this.analyticsService.publishClickEvent(analyticsData)
-                : directAnalyticsService.publishClickEvent(analyticsData)
-
-            console.log("ANALYTICS: Using", this.analyticsService.getBufferStats().isProducerReady ? "Kafka producer" : "Direct analytics service")
-
-            publishPromise
-                .then(() => {
-                    console.log("ANALYTICS: Click event published successfully", { shortCode })
-
-                    // Invalidate analytics cache to ensure fresh data
-                    this.invalidateAnalyticsCache(shortCode).catch((cacheError) => {
-                        console.log("ANALYTICS: Failed to invalidate cache", { shortCode, error: cacheError.message })
-                    })
-
-                    analyticsSpan.setStatus({ code: SpanStatusCode.OK })
-                    analyticsSpan.end()
-                })
-                .catch((error: any) => {
-                    console.log("ANALYTICS: Failed to publish click event", { shortCode, error: error.message })
-
-                    // Try fallback if Kafka failed
-                    if (this.analyticsService.getBufferStats().isProducerReady) {
-                        console.log("ANALYTICS: Trying direct database fallback", { shortCode })
-                        directAnalyticsService.publishClickEvent(analyticsData)
-                            .then(() => {
-                                console.log("ANALYTICS: Fallback successful", { shortCode })
-                                analyticsSpan.setStatus({ code: SpanStatusCode.OK })
-                                analyticsSpan.end()
-                            })
-                            .catch((fallbackError: any) => {
-                                console.log("ANALYTICS: Fallback also failed", { shortCode, error: fallbackError.message })
-                                analyticsSpan.recordException(fallbackError)
-                                analyticsSpan.setStatus({
-                                    code: SpanStatusCode.ERROR,
-                                    message: fallbackError.message || "Analytics fallback failed"
-                                })
-                                analyticsSpan.end()
-                            })
-                    } else {
-                        analyticsSpan.recordException(error)
-                        analyticsSpan.setStatus({
-                            code: SpanStatusCode.ERROR,
-                            message: error.message || "Analytics publish failed"
-                        })
-                        analyticsSpan.end()
-                    }
-
-                    logger.error("Failed to publish analytics event", {
-                        shortCode,
-                        error:
-                            error instanceof Error
-                                ? error.message
-                                : "Unknown error"
-                    })
-                })
+            // CRITICAL: Perform HTTP redirect IMMEDIATELY before any analytics processing
+            // This ensures fast user experience regardless of analytics status
+            res.redirect(301, urlMapping.long_url)
 
             logger.info("URL redirect successful", {
                 shortCode,
                 longUrl: urlMapping.long_url,
                 ip: this.getClientIP(req),
-                userAgent: req.get("User-Agent"),
-                referrer: req.get("Referer"),
                 cacheSource: lookupResult.source,
                 latency
             })
 
-            // Perform HTTP 301 redirect
-            res.redirect(301, urlMapping.long_url)
+            // Process analytics asynchronously AFTER redirect response is sent
+            // Use setImmediate to ensure this runs after response is flushed
+            setImmediate(() => {
+                this.processAnalyticsAsync(req, shortCode, urlMapping, lookupResult.source)
+            })
 
             return {
                 success: true,
@@ -339,7 +264,6 @@ export class URLRedirectService {
             const latency = Date.now() - startTime
             this.updateAverageLatency(latency)
 
-            // Record metrics
             metricsService.recordUrlRedirect("500", false, latency)
             metricsService.recordError("redirect_error", "url_redirect_service")
 
@@ -350,6 +274,11 @@ export class URLRedirectService {
                 ip: this.getClientIP(req),
                 latency
             })
+
+            // Prevent caching of 500 responses
+            res.setHeader('Cache-Control', 'no-store, no-cache, must-revalidate, private')
+            res.setHeader('Pragma', 'no-cache')
+            res.setHeader('Expires', '0')
 
             res.status(500).json({
                 error: "Internal server error",
@@ -363,6 +292,119 @@ export class URLRedirectService {
                 shortCode,
                 error: "Internal server error",
                 latency
+            }
+        }
+    }
+
+    /**
+     * Process analytics asynchronously after redirect
+     * This ensures analytics never blocks the redirect response
+     */
+    private async processAnalyticsAsync(
+        req: Request,
+        shortCode: string,
+        urlMapping: URLMapping,
+        cacheSource: string
+    ): Promise<void> {
+        try {
+            // Create child span for analytics
+            const analyticsSpan = createChildSpan("analytics.publish_event", {
+                "url_shortener.short_code": shortCode,
+                "analytics.event_type": "click"
+            })
+
+            // Extract analytics data from request
+            const userAgent = req.get("User-Agent") || ""
+            const deviceInfo = this.parseUserAgent(userAgent)
+            const ipAddress = this.getClientIP(req)
+
+            // Get geolocation data with timeout (non-blocking)
+            const geoData = await this.getGeoDataWithTimeout(ipAddress, 1500)
+
+            // Prepare analytics data
+            const analyticsData = {
+                short_code: shortCode,
+                ip_address: ipAddress,
+                user_agent: userAgent,
+                referrer: req.get("Referer"),
+                device_type: deviceInfo.device,
+                browser: deviceInfo.browser,
+                os: deviceInfo.os,
+                country_code: geoData.country_code || undefined,
+                region: geoData.region || undefined,
+                city: geoData.city || undefined,
+                clicked_at: new Date()
+            }
+
+            // Determine which service to use
+            const isKafkaReady = this.analyticsService.getBufferStats().isProducerReady
+
+            logger.debug("Publishing analytics event", {
+                shortCode,
+                method: isKafkaReady ? "Kafka" : "Direct",
+                device: deviceInfo.device,
+                browser: deviceInfo.browser,
+                country: analyticsData.country_code || "Unknown"
+            })
+
+            // Publish to analytics service (Kafka or Direct DB)
+            // This will handle WebSocket emission internally
+            const publishPromise = isKafkaReady
+                ? this.analyticsService.publishClickEvent(analyticsData)
+                : directAnalyticsService.publishClickEvent(analyticsData)
+
+            await publishPromise
+
+            // Update access tracking (non-critical, don't wait)
+            this.updateAccessTracking(shortCode, urlMapping).catch((error) => {
+                logger.warn("Failed to update access tracking", {
+                    shortCode,
+                    error: error instanceof Error ? error.message : "Unknown error"
+                })
+            })
+
+            // Invalidate analytics cache after successful publish
+            this.invalidateAnalyticsCache(shortCode).catch((error) => {
+                logger.warn("Failed to invalidate analytics cache", {
+                    shortCode,
+                    error: error instanceof Error ? error.message : "Unknown error"
+                })
+            })
+
+            analyticsSpan.setStatus({ code: SpanStatusCode.OK })
+            analyticsSpan.end()
+
+            logger.debug("Analytics event processed successfully", { shortCode })
+
+        } catch (error) {
+            logger.error("Failed to process analytics", {
+                shortCode,
+                error: error instanceof Error ? error.message : "Unknown error"
+            })
+            // Don't throw - analytics failures shouldn't affect anything at this point
+        }
+    }
+
+    /**
+     * Get geolocation data with timeout
+     * Uses synchronous lookup for immediate results
+     */
+    private async getGeoDataWithTimeout(ipAddress: string, timeoutMs: number): Promise<any> {
+        try {
+            // Use lookupSync for immediate results with timeout
+            return await geoipService.lookupSync(ipAddress, timeoutMs)
+        } catch (error) {
+            logger.debug("GeoIP lookup failed or timed out", {
+                ipAddress,
+                error: error instanceof Error ? error.message : "Unknown error"
+            })
+            return {
+                country_code: null,
+                country_name: null,
+                region: null,
+                city: null,
+                latitude: null,
+                longitude: null
             }
         }
     }
@@ -383,40 +425,23 @@ export class URLRedirectService {
             const latency = Date.now() - startTime
 
             if (!urlMapping) {
-                return {
-                    urlMapping: null,
-                    status: "not_found",
-                    latency
-                }
+                return { urlMapping: null, status: "not_found", latency }
             }
 
             if (urlMapping.is_deleted) {
-                return {
-                    urlMapping: null,
-                    status: "deleted",
-                    latency
-                }
+                return { urlMapping: null, status: "deleted", latency }
             }
 
             if (this.isExpired(urlMapping)) {
-                return {
-                    urlMapping: null,
-                    status: "expired",
-                    latency
-                }
+                return { urlMapping: null, status: "expired", latency }
             }
 
-            return {
-                urlMapping,
-                status: "found",
-                latency
-            }
+            return { urlMapping, status: "found", latency }
         } catch (error) {
             logger.error("Error resolving URL", {
                 shortCode,
                 error: error instanceof Error ? error.message : "Unknown error"
             })
-
             throw error
         }
     }
@@ -425,17 +450,12 @@ export class URLRedirectService {
      * Batch resolve multiple URLs
      */
     async batchResolveUrls(shortCodes: string[]): Promise<
-        Map<
-            string,
-            {
-                urlMapping: URLMapping | null
-                status: "found" | "not_found" | "expired" | "deleted"
-            }
-        >
+        Map<string, {
+            urlMapping: URLMapping | null
+            status: "found" | "not_found" | "expired" | "deleted"
+        }>
     > {
         const results = new Map()
-
-        // Process in parallel with concurrency limit
         const concurrency = 10
         const chunks = this.chunkArray(shortCodes, concurrency)
 
@@ -447,10 +467,7 @@ export class URLRedirectService {
                 } catch (error) {
                     logger.error("Error in batch resolve", {
                         shortCode,
-                        error:
-                            error instanceof Error
-                                ? error.message
-                                : "Unknown error"
+                        error: error instanceof Error ? error.message : "Unknown error"
                     })
                     return {
                         shortCode,
@@ -496,7 +513,6 @@ export class URLRedirectService {
             averageLatency: 0,
             cacheHitRate: 0
         }
-
         logger.info("Redirect service statistics reset")
     }
 
@@ -543,8 +559,7 @@ export class URLRedirectService {
                     service: bufferStats.isProducerReady,
                     kafka: bufferStats.isProducerReady,
                     bufferSize: bufferStats.bufferSize,
-                    bufferUtilization:
-                        bufferStats.bufferSize / bufferStats.maxBufferSize
+                    bufferUtilization: bufferStats.bufferSize / bufferStats.maxBufferSize
                 }
             }
         } catch (error) {
@@ -575,9 +590,8 @@ export class URLRedirectService {
      */
     private isExpired(urlMapping: URLMapping): boolean {
         if (!urlMapping.expires_at) {
-            return false // No expiry set
+            return false
         }
-
         const now = new Date()
         const expiryTime = new Date(urlMapping.expires_at)
         return now >= expiryTime
@@ -588,17 +602,13 @@ export class URLRedirectService {
      */
     private async markExpiredInCache(shortCode: string): Promise<void> {
         try {
-            // Create an expired marker in cache with 7-day TTL
-            // This prevents repeated database queries for expired URLs
-            await this.cacheService.markAsExpired(shortCode, 7 * 24 * 60 * 60) // 7 days in seconds
-
+            await this.cacheService.markAsExpired(shortCode, 7 * 24 * 60 * 60)
             logger.debug("Marked expired URL in cache", { shortCode })
         } catch (error) {
             logger.error("Failed to mark expired URL in cache", {
                 shortCode,
                 error: error instanceof Error ? error.message : "Unknown error"
             })
-            // Don't throw - this is an optimization, not critical
         }
     }
 
@@ -610,12 +620,8 @@ export class URLRedirectService {
         urlMapping: URLMapping
     ): Promise<void> {
         try {
-            // Update database access count and timestamp
             await this.urlRepository.incrementAccessCount(shortCode)
 
-            console.log("HITTTTTTTTTTTT:updating redirect")
-
-            // Update cache with new access timestamp
             const updatedMapping: URLMapping = {
                 ...urlMapping,
                 access_count: urlMapping.access_count + 1,
@@ -624,7 +630,6 @@ export class URLRedirectService {
 
             await this.cacheService.updateCache(shortCode, updatedMapping)
 
-            console.log("HITTTTTTTTTTTT:updating redirect")
             logger.debug("Access tracking updated", {
                 shortCode,
                 newAccessCount: updatedMapping.access_count
@@ -634,8 +639,6 @@ export class URLRedirectService {
                 shortCode,
                 error: error instanceof Error ? error.message : "Unknown error"
             })
-
-            // Don't throw error - access tracking failures shouldn't break redirects
         }
     }
 
@@ -662,7 +665,6 @@ export class URLRedirectService {
     } {
         const ua = userAgent.toLowerCase()
 
-        // Detect device type
         let device = "Desktop"
         if (ua.includes("mobile") || ua.includes("android") || ua.includes("iphone")) {
             device = "Mobile"
@@ -670,7 +672,6 @@ export class URLRedirectService {
             device = "Tablet"
         }
 
-        // Detect browser
         let browser = "Unknown"
         if (ua.includes("chrome") && !ua.includes("edg")) {
             browser = "Chrome"
@@ -686,7 +687,6 @@ export class URLRedirectService {
             browser = "Internet Explorer"
         }
 
-        // Detect OS
         let os = "Unknown"
         if (ua.includes("windows")) {
             os = "Windows"
@@ -709,8 +709,6 @@ export class URLRedirectService {
     private updateAverageLatency(latency: number): void {
         const total = this.stats.totalRedirects
         const currentAvg = this.stats.averageLatency
-
-        // Calculate running average
         this.stats.averageLatency = (currentAvg * (total - 1) + latency) / total
     }
 
@@ -718,18 +716,14 @@ export class URLRedirectService {
      * Update cache hit rate based on cache source
      */
     private updateCacheHitRate(cacheSource: string): void {
-        // Consider memory and redis as cache hits
-        const cacheHits =
-            cacheSource === "memory" || cacheSource === "redis" ? 1 : 0
+        const cacheHits = cacheSource === "memory" || cacheSource === "redis" ? 1 : 0
         const totalRequests = this.stats.totalRedirects
 
         if (totalRequests > 0) {
-            // This is a simplified calculation - in production, you'd want to track this more precisely
             const currentHits = Math.floor(
                 (this.stats.cacheHitRate * (totalRequests - 1)) / 100
             )
-            this.stats.cacheHitRate =
-                ((currentHits + cacheHits) / totalRequests) * 100
+            this.stats.cacheHitRate = ((currentHits + cacheHits) / totalRequests) * 100
         }
     }
 
@@ -749,11 +743,9 @@ export class URLRedirectService {
      */
     async preloadUrls(shortCodes: string[]): Promise<void> {
         try {
-            logger.info("Preloading URLs into cache", {
-                count: shortCodes.length
-            })
+            logger.info("Preloading URLs into cache", { count: shortCodes.length })
 
-            const chunks = this.chunkArray(shortCodes, 50) // Process in chunks of 50
+            const chunks = this.chunkArray(shortCodes, 50)
 
             for (const chunk of chunks) {
                 const promises = chunk.map(async (shortCode) => {
@@ -762,10 +754,7 @@ export class URLRedirectService {
                     } catch (error) {
                         logger.warn("Failed to preload URL", {
                             shortCode,
-                            error:
-                                error instanceof Error
-                                    ? error.message
-                                    : "Unknown error"
+                            error: error instanceof Error ? error.message : "Unknown error"
                         })
                     }
                 })
@@ -773,14 +762,11 @@ export class URLRedirectService {
                 await Promise.all(promises)
             }
 
-            logger.info("URL preloading completed", {
-                count: shortCodes.length
-            })
+            logger.info("URL preloading completed", { count: shortCodes.length })
         } catch (error) {
             logger.error("Error during URL preloading", {
                 error: error instanceof Error ? error.message : "Unknown error"
             })
-
             throw error
         }
     }
@@ -790,7 +776,6 @@ export class URLRedirectService {
      */
     async invalidateUrl(shortCode: string): Promise<void> {
         await this.cacheService.invalidateCache(shortCode)
-
         logger.info("URL invalidated from cache", { shortCode })
     }
 
@@ -799,11 +784,8 @@ export class URLRedirectService {
      */
     private async invalidateAnalyticsCache(shortCode: string): Promise<void> {
         try {
-            // Import analytics cache service dynamically to avoid circular dependencies
             const { analyticsCacheService } = await import("../services/analyticsCacheService")
             await analyticsCacheService.invalidateAnalytics(shortCode)
-
-            console.log("ANALYTICS: Cache invalidated for", shortCode)
             logger.debug("Analytics cache invalidated", { shortCode })
         } catch (error) {
             logger.warn("Failed to invalidate analytics cache", {
@@ -827,7 +809,6 @@ export class URLRedirectService {
             cacheStats: this.cacheService.getStats(),
             analyticsStats: this.analyticsService.getBufferStats(),
             healthStatus: {
-                // This would be populated by the health check
                 lastCheck: new Date().toISOString()
             }
         }
@@ -846,6 +827,7 @@ export class URLRedirectService {
     async shutdown(): Promise<void> {
         try {
             await this.analyticsService.shutdown()
+            await directAnalyticsService.shutdown()
             logger.info("URL Redirect Service shutdown completed")
         } catch (error) {
             logger.error("Error during redirect service shutdown", {

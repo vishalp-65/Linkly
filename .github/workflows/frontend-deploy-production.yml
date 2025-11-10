@@ -1,0 +1,257 @@
+name: Deploy Frontend to Production
+
+on:
+  workflow_dispatch:
+    inputs:
+      reason:
+        description: 'Reason for production deployment'
+        required: true
+      confirm:
+        description: 'Type "DEPLOY" to confirm production deployment'
+        required: true
+
+jobs:
+  validate-input:
+    name: Validate Deployment Request
+    runs-on: ubuntu-latest
+    steps:
+      - name: Validate confirmation
+        run: |
+          if [ "${{ github.event.inputs.confirm }}" != "DEPLOY" ]; then
+            echo "❌ Deployment cancelled: Confirmation text must be 'DEPLOY'"
+            exit 1
+          fi
+          echo "✅ Deployment confirmed"
+      
+      - name: Log deployment reason
+        run: |
+          echo "Deployment reason: ${{ github.event.inputs.reason }}"
+          echo "Triggered by: ${{ github.actor }}"
+          echo "Timestamp: $(date -u +"%Y-%m-%d %H:%M:%S UTC")"
+
+  deploy-production:
+    name: Deploy to Production
+    runs-on: ubuntu-latest
+    needs: validate-input
+    environment:
+      name: production
+      url: https://${{ secrets.PRODUCTION_DOMAIN }}
+    
+    defaults:
+      run:
+        working-directory: frontend
+    
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+      
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'npm'
+          cache-dependency-path: frontend/package-lock.json
+      
+      - name: Install dependencies
+        run: npm ci
+      
+      - name: Run tests
+        run: npm run test
+      
+      - name: Run linter
+        run: npm run lint
+      
+      - name: Build for production
+        run: npm run build:production
+        env:
+          NODE_ENV: production
+          VITE_BASE_URL: ${{ secrets.PRODUCTION_API_URL }}
+          VITE_REDIRECT_BASE_URL: ${{ secrets.PRODUCTION_REDIRECT_URL }}
+          VITE_WS_URL: ${{ secrets.PRODUCTION_WS_URL }}
+          VITE_ENABLE_CACHE: true
+      
+      - name: Verify build output
+        run: |
+          echo "Checking build output..."
+          if [ ! -d "dist" ]; then
+            echo "❌ Build directory not found"
+            exit 1
+          fi
+          
+          if [ ! -f "dist/index.html" ]; then
+            echo "❌ index.html not found in build"
+            exit 1
+          fi
+          
+          echo "✅ Build output verified"
+          echo "Build size: $(du -sh dist/ | cut -f1)"
+      
+      - name: Configure AWS credentials
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+          aws-region: us-east-1
+      
+      - name: Backup current production
+        run: |
+          echo "Creating backup of current production..."
+          BACKUP_PREFIX="backups/$(date +%Y%m%d-%H%M%S)"
+          
+          aws s3 sync s3://${{ secrets.PRODUCTION_S3_BUCKET }}/ \
+            s3://${{ secrets.PRODUCTION_S3_BUCKET }}/$BACKUP_PREFIX/ \
+            --exclude "backups/*"
+          
+          echo "✅ Backup created at: $BACKUP_PREFIX"
+          echo "backup_prefix=$BACKUP_PREFIX" >> $GITHUB_OUTPUT
+        id: backup
+      
+      - name: Deploy to S3
+        run: |
+          echo "Deploying to production S3 bucket..."
+          
+          # Upload HTML files with no-cache
+          aws s3 sync dist/ s3://${{ secrets.PRODUCTION_S3_BUCKET }}/ \
+            --exclude "*" \
+            --include "*.html" \
+            --cache-control "no-cache, no-store, must-revalidate" \
+            --metadata-directive REPLACE \
+            --delete
+          
+          # Upload JS/CSS files with long cache
+          aws s3 sync dist/ s3://${{ secrets.PRODUCTION_S3_BUCKET }}/ \
+            --exclude "*.html" \
+            --include "*.js" \
+            --include "*.css" \
+            --cache-control "public, max-age=31536000, immutable" \
+            --metadata-directive REPLACE \
+            --delete
+          
+          # Upload other assets with moderate cache
+          aws s3 sync dist/ s3://${{ secrets.PRODUCTION_S3_BUCKET }}/ \
+            --exclude "*.html" \
+            --exclude "*.js" \
+            --exclude "*.css" \
+            --cache-control "public, max-age=86400" \
+            --metadata-directive REPLACE \
+            --delete
+          
+          echo "✅ Files uploaded to S3"
+      
+      - name: Invalidate CloudFront cache
+        run: |
+          echo "Invalidating CloudFront cache..."
+          INVALIDATION_ID=$(aws cloudfront create-invalidation \
+            --distribution-id ${{ secrets.PRODUCTION_CLOUDFRONT_DIST_ID }} \
+            --paths "/*" \
+            --query 'Invalidation.Id' \
+            --output text)
+          
+          echo "CloudFront invalidation created: $INVALIDATION_ID"
+          echo "invalidation_id=$INVALIDATION_ID" >> $GITHUB_OUTPUT
+        id: invalidation
+      
+      - name: Wait for invalidation to complete
+        run: |
+          echo "Waiting for CloudFront invalidation to complete..."
+          aws cloudfront wait invalidation-completed \
+            --distribution-id ${{ secrets.PRODUCTION_CLOUDFRONT_DIST_ID }} \
+            --id ${{ steps.invalidation.outputs.invalidation_id }}
+          
+          echo "✅ CloudFront cache invalidated"
+      
+      - name: Verify deployment
+        run: |
+          echo "Verifying production deployment..."
+          
+          # Wait a few seconds for changes to propagate
+          sleep 10
+          
+          # Test if the site is accessible
+          HTTP_STATUS=$(curl -s -o /dev/null -w "%{http_code}" https://${{ secrets.PRODUCTION_DOMAIN }})
+          if [ $HTTP_STATUS -eq 200 ]; then
+            echo "✅ Site is accessible (HTTP $HTTP_STATUS)"
+          else
+            echo "❌ Site returned HTTP $HTTP_STATUS"
+            exit 1
+          fi
+          
+          # Test if critical assets are accessible
+          curl -f -s https://${{ secrets.PRODUCTION_DOMAIN }}/assets/js/ > /dev/null || echo "⚠️ Warning: Could not verify JS assets"
+      
+      - name: Create deployment tag
+        run: |
+          git config user.name "GitHub Actions"
+          git config user.email "actions@github.com"
+          
+          TAG_NAME="production-$(date +%Y%m%d-%H%M%S)"
+          git tag -a $TAG_NAME -m "Production deployment: ${{ github.event.inputs.reason }}"
+          git push origin $TAG_NAME
+          
+          echo "✅ Created deployment tag: $TAG_NAME"
+      
+      - name: Deployment summary
+        if: always()
+        run: |
+          echo "=========================================="
+          echo "Production Deployment Summary"
+          echo "=========================================="
+          echo "Status: ${{ job.status }}"
+          echo "Triggered by: ${{ github.actor }}"
+          echo "Reason: ${{ github.event.inputs.reason }}"
+          echo "Commit: ${{ github.sha }}"
+          echo "Backup location: ${{ steps.backup.outputs.backup_prefix }}"
+          echo "Production URL: https://${{ secrets.PRODUCTION_DOMAIN }}"
+          echo "=========================================="
+      
+      - name: Notify on failure
+        if: failure()
+        run: |
+          echo "❌ Production deployment failed!"
+          echo "Backup is available at: ${{ steps.backup.outputs.backup_prefix }}"
+          echo "To rollback, run the rollback workflow"
+
+  post-deployment-tests:
+    name: Post-Deployment Tests
+    runs-on: ubuntu-latest
+    needs: deploy-production
+    
+    steps:
+      - name: Wait for deployment to stabilize
+        run: sleep 30
+      
+      - name: Run smoke tests
+        run: |
+          echo "Running smoke tests..."
+          
+          # Test homepage
+          HTTP_STATUS=$(curl -s -o /dev/null -w "%{http_code}" https://${{ secrets.PRODUCTION_DOMAIN }})
+          if [ $HTTP_STATUS -ne 200 ]; then
+            echo "❌ Homepage test failed (HTTP $HTTP_STATUS)"
+            exit 1
+          fi
+          echo "✅ Homepage test passed"
+          
+          # Test HTTPS redirect
+          HTTP_STATUS=$(curl -s -o /dev/null -w "%{http_code}" -L http://${{ secrets.PRODUCTION_DOMAIN }})
+          if [ $HTTP_STATUS -ne 200 ]; then
+            echo "❌ HTTPS redirect test failed"
+            exit 1
+          fi
+          echo "✅ HTTPS redirect test passed"
+          
+          # Test security headers
+          HEADERS=$(curl -s -I https://${{ secrets.PRODUCTION_DOMAIN }})
+          if echo "$HEADERS" | grep -q "strict-transport-security"; then
+            echo "✅ HSTS header present"
+          else
+            echo "⚠️ Warning: HSTS header not found"
+          fi
+          
+          if echo "$HEADERS" | grep -q "x-content-type-options"; then
+            echo "✅ X-Content-Type-Options header present"
+          else
+            echo "⚠️ Warning: X-Content-Type-Options header not found"
+          fi
+          
+          echo "✅ All smoke tests passed"

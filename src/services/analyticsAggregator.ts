@@ -36,7 +36,15 @@ class AnalyticsAggregator {
             }
 
             // Ensure Kafka is connected
-            await kafka.connect();
+            try {
+                await kafka.connect();
+            } catch (error) {
+                logger.warn('Kafka not available for analytics aggregator, service will not start', {
+                    error: error instanceof Error ? error.message : 'Unknown error'
+                });
+                // Don't throw - let the service continue without this aggregator
+                return;
+            }
 
             // Create consumer
             this.consumer = kafka.createConsumer(this.groupId);
