@@ -8,8 +8,9 @@ export interface ToastProps {
     message: string;
     duration?: number;
     onClose: (id: string) => void;
-    position?: 'top-right' | 'top-left' | 'bottom-right' | 'bottom-left' | 'top-center' | 'bottom-center';
 }
+
+export type ToastPosition = 'top-right' | 'top-left' | 'bottom-right' | 'bottom-left' | 'top-center' | 'bottom-center';
 
 const Toast: React.FC<ToastProps> = ({
     id,
@@ -17,8 +18,7 @@ const Toast: React.FC<ToastProps> = ({
     title,
     message,
     duration = 3000,
-    onClose,
-    position = 'top-right'
+    onClose
 }) => {
     const [isVisible, setIsVisible] = useState(false);
     const [isLeaving, setIsLeaving] = useState(false);
@@ -92,27 +92,18 @@ const Toast: React.FC<ToastProps> = ({
         }
     };
 
-    const positionClasses = {
-        'top-right': 'top-4 right-4',
-        'top-left': 'top-4 left-4',
-        'bottom-right': 'bottom-4 right-4',
-        'bottom-left': 'bottom-4 left-4',
-        'top-center': 'top-4 left-1/2 transform -translate-x-1/2',
-        'bottom-center': 'bottom-4 left-1/2 transform -translate-x-1/2'
-    };
-
     const config = typeConfig[type];
 
-    const toastContent = (
+    return (
         <div
-            className={`fixed z-50 w-auto ${positionClasses[position]} transition-all duration-300 ease-in-out ${isVisible && !isLeaving
+            className={`w-auto transition-all duration-300 ease-in-out ${isVisible && !isLeaving
                 ? 'opacity-100 translate-y-0'
                 : 'opacity-0 translate-y-2'
                 }`}
             role="alert"
             aria-live="polite"
         >
-            <div className={`max-w-sm w-full ${config.bgColor} ${config.borderColor} border rounded-lg shadow-lg pointer-events-auto`}>
+            <div className={`max-w-sm w-full ${config.bgColor} ${config.borderColor} border rounded-lg shadow-lg`}>
                 <div className="p-4">
                     <div className="flex items-start">
                         <div className={`flex-shrink-0 ${config.iconColor}`}>
@@ -145,33 +136,57 @@ const Toast: React.FC<ToastProps> = ({
             </div>
         </div>
     );
-
-    return createPortal(toastContent, document.body);
 };
 
 // Toast Container Component
 export interface ToastContainerProps {
     toasts: ToastProps[];
     onRemove: (id: string) => void;
-    position?: ToastProps['position'];
+    position?: ToastPosition;
 }
 
+/**
+ * Toast Container Component
+ * Manages multiple simultaneous toast notifications
+ * Implements requirement 2.3 for supporting multiple toasts
+ */
 export const ToastContainer: React.FC<ToastContainerProps> = ({
     toasts,
     onRemove,
     position = 'top-right'
 }) => {
-    return (
-        <>
-            {toasts.map((toast) => (
-                <Toast
-                    key={toast.id}
-                    {...toast}
-                    position={position}
-                    onClose={onRemove}
-                />
-            ))}
-        </>
+    const positionClasses = {
+        'top-right': 'top-4 right-4',
+        'top-left': 'top-4 left-4',
+        'bottom-right': 'bottom-4 right-4',
+        'bottom-left': 'bottom-4 left-4',
+        'top-center': 'top-4 left-1/2 transform -translate-x-1/2',
+        'bottom-center': 'bottom-4 left-1/2 transform -translate-x-1/2'
+    };
+
+    return createPortal(
+        <div
+            className={`fixed z-50 ${positionClasses[position]} pointer-events-none`}
+            aria-live="polite"
+            aria-atomic="true"
+        >
+            <div className="flex flex-col gap-2 pointer-events-auto">
+                {toasts.map((toast, index) => (
+                    <div
+                        key={toast.id}
+                        style={{
+                            animationDelay: `${index * 50}ms`
+                        }}
+                    >
+                        <Toast
+                            {...toast}
+                            onClose={onRemove}
+                        />
+                    </div>
+                ))}
+            </div>
+        </div>,
+        document.body
     );
 };
 
