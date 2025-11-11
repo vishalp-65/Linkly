@@ -54,13 +54,6 @@ class App {
             })
         )
 
-        console.log(
-            "CORS Origin:",
-            !config.isDevelopment
-                ? "Development Mode - All Origins Allowed"
-                : process.env.ALLOWED_ORIGINS
-        )
-
         // CORS configuration
         this.app.use(
             cors({

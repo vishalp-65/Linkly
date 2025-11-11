@@ -5,10 +5,5 @@ services:
     region: oregon
     plan: free
     rootDir: .
-    buildCommand: npm ci && npm run build
+    buildCommand: npm install --include=dev && npm run build && npm prune --production
     startCommand: node dist/server.js
-    envVars:
-      - key: NODE_ENV
-        value: production
-      - key: PORT
-        value: 3000

@@ -9,7 +9,7 @@ const envSchema = Joi.object({
   // Server Configuration
   NODE_ENV: Joi.string().valid('development', 'production', 'test').default('development'),
   PORT: Joi.number().port().default(3000),
-  HOST: Joi.string().default('localhost'),
+  HOST: Joi.string().default(process.env.NODE_ENV === 'production' ? '0.0.0.0' : 'localhost'),
 
   // Database Configuration
   DB_HOST: Joi.string().required(),
