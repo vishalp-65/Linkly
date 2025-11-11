@@ -9,7 +9,7 @@ const envSchema = Joi.object({
   // Server Configuration
   NODE_ENV: Joi.string().valid('development', 'production', 'test').default('development'),
   PORT: Joi.number().port().default(3000),
-  HOST: Joi.string().default(process.env.NODE_ENV === 'production' ? '0.0.0.0' : 'localhost'),
+  HOST: Joi.string().optional(),
 
   // Database Configuration
   DB_HOST: Joi.string().required(),
@@ -78,7 +78,7 @@ export const config = {
   // Server
   nodeEnv: env.NODE_ENV as string,
   port: env.PORT as number,
-  host: env.HOST as string,
+  host: (env.HOST || (env.NODE_ENV === 'production' ? '0.0.0.0' : 'localhost')) as string,
   isDevelopment: env.NODE_ENV === 'development',
   isProduction: env.NODE_ENV === 'production',
   isTest: env.NODE_ENV === 'test',

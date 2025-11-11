@@ -7,3 +7,8 @@ services:
     rootDir: .
     buildCommand: npm install --include=dev && npm run build && npm prune --production
     startCommand: node dist/server.js
+    envVars:
+      - key: NODE_ENV
+        value: production
+      - key: HOST
+        value: 0.0.0.0
