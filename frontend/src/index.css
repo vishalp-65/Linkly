@@ -70,6 +70,24 @@
   }
 }
 
+@keyframes shimmer {
+  0% {
+    transform: translateX(-100%);
+  }
+  100% {
+    transform: translateX(100%);
+  }
+}
+
+@keyframes progressIndeterminate {
+  0% {
+    left: -30%;
+  }
+  100% {
+    left: 100%;
+  }
+}
+
 @utility animate-fade-in {
   animation: fadeIn 0.5s ease-in-out;
 }
@@ -80,6 +98,22 @@
 
 @utility animate-bounce-subtle {
   animation: bounceSubtle 2s infinite;
+}
+
+@utility animate-shimmer {
+  animation: shimmer 2s infinite;
+  background: linear-gradient(
+    90deg,
+    transparent,
+    rgba(255, 255, 255, 0.5),
+    transparent
+  );
+  background-size: 200% 100%;
+}
+
+@utility animate-progress-indeterminate {
+  animation: progressIndeterminate 1.5s ease-in-out infinite;
+  position: relative;
 }
 
 /* Custom scrollbar */

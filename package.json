@@ -18,7 +18,15 @@
     "db:create": "ts-node src/database/init.ts create",
     "kafka:init": "ts-node src/scripts/initKafka.ts",
     "analytics:aggregator": "ts-node src/scripts/runAnalyticsAggregator.ts",
-    "analytics:batch": "ts-node src/scripts/runBatchAnalytics.ts"
+    "analytics:batch": "ts-node src/scripts/runBatchAnalytics.ts",
+    "test:preflight": "node src/test/load/preflight-check.js",
+    "test:smoke": "k6 run src/test/load/smoke-test.js",
+    "test:load": "k6 run src/test/load/load-test.js",
+    "test:stress": "k6 run src/test/load/stress-test.js",
+    "test:spike": "k6 run src/test/load/spike-test.js",
+    "test:soak": "k6 run src/test/load/soak-test.js",
+    "test:chaos": "node src/test/load/chaos-test.js",
+    "test:load:all": "bash src/test/load/run-all-tests.sh"
   },
   "keywords": [
     "url-shortener",
