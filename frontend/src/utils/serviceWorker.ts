@@ -126,10 +126,53 @@ export class ServiceWorkerManager {
                 break;
             case 'OFFLINE_READY':
                 console.log('App ready for offline use');
+                // Dispatch event for UI components
+                window.dispatchEvent(new CustomEvent('sw-offline-ready'));
+                break;
+            case 'NETWORK_ONLINE':
+                console.log('Network request succeeded:', data.url);
+                break;
+            case 'SERVING_FROM_CACHE':
+                console.log('Serving from cache (offline):', data.url);
+                // Dispatch event to notify UI that we're offline
+                window.dispatchEvent(new CustomEvent('sw-serving-from-cache', {
+                    detail: { url: data.url }
+                }));
+                break;
+            case 'SYNC_COMPLETE':
+                console.log(`Background sync complete: ${data.successCount}/${data.totalCount} succeeded`);
+                // Dispatch event for UI notification
+                window.dispatchEvent(new CustomEvent('sw-sync-complete', {
+                    detail: {
+                        successCount: data.successCount,
+                        totalCount: data.totalCount,
+                        remainingCount: data.remainingCount
+                    }
+                }));
                 break;
             default:
                 console.log('Unknown message from service worker:', data);
         }
+    }
+
+    // Request background sync manually
+    async requestBackgroundSync(): Promise<void> {
+        if (this.registration && 'sync' in this.registration) {
+            try {
+                // @ts-ignore - sync API is not fully typed in TypeScript
+                await this.registration.sync.register('sync-failed-requests');
+                console.log('Background sync requested');
+            } catch (error) {
+                console.error('Failed to request background sync:', error);
+            }
+        } else {
+            console.warn('Background sync not supported');
+        }
+    }
+
+    // Check if background sync is supported
+    isBackgroundSyncSupported(): boolean {
+        return 'sync' in ServiceWorkerRegistration.prototype;
     }
 }
 
@@ -144,6 +187,8 @@ export const useServiceWorker = () => {
     const isOffline = () => sw.isOffline();
     const clearCaches = () => sw.clearCaches();
     const getCacheUsage = () => sw.getCacheUsage();
+    const requestBackgroundSync = () => sw.requestBackgroundSync();
+    const isBackgroundSyncSupported = () => sw.isBackgroundSyncSupported();
 
     return {
         register,
@@ -153,5 +198,7 @@ export const useServiceWorker = () => {
         isOffline,
         clearCaches,
         getCacheUsage,
+        requestBackgroundSync,
+        isBackgroundSyncSupported,
     };
 };
