@@ -16,18 +16,31 @@
    - **Region**: Choose your preferred region
    - **Branch**: main (or your default branch)
    - **Root Directory**: Leave EMPTY or set to `.` (NOT `src`)
-   - **Build Command**: `npm ci && npm run build`
+   - **Build Command**: `npm install --include=dev && npm run build && npm prune --production`
    - **Start Command**: `node dist/server.js`
 
 3. **Add Environment Variables**
    
    In the Render dashboard, add these environment variables:
    
+   **Required:**
    - `NODE_ENV` = `production`
-   - `PORT` = `3000` (Render will override this automatically)
-   - `DATABASE_URL` = Your PostgreSQL connection string
-   - `REDIS_URL` = Your Redis connection string
-   - Add any other environment variables from your `.env` file
+   - `HOST` = `0.0.0.0` (Important: Must bind to all interfaces for Render)
+   - `DB_HOST` = Your PostgreSQL host
+   - `DB_PORT` = `5432`
+   - `DB_NAME` = Your database name
+   - `DB_USER` = Your database user
+   - `DB_PASSWORD` = Your database password
+   - `REDIS_HOST` = Your Redis host
+   - `REDIS_PORT` = `6379`
+   - `REDIS_PASSWORD` = Your Redis password (if required)
+   - `JWT_SECRET` = Generate a strong 32+ character secret
+   - `JWT_REFRESH_SECRET` = Generate a strong 32+ character secret
+   - `API_KEY_SECRET` = Generate a strong 32+ character secret
+   
+   **Optional:**
+   - `KAFKA_BROKERS` = Leave empty or omit if not using Kafka
+   - `PORT` = Render sets this automatically, no need to configure
 
 ## Alternative: Using render.yaml
 
@@ -44,10 +57,16 @@ If you prefer infrastructure-as-code, the `render.yaml` file in the root directo
 
 This happens when the root directory or start command path is wrong. Make sure:
 - **Root Directory** in Render dashboard is EMPTY or set to `.` (NOT `src`)
-- Build command is: `npm ci && npm run build`
+- Build command is: `npm install --include=dev && npm run build && npm prune --production`
 - Start command is: `node dist/server.js` (NOT `node ../dist/server.js` or `node src/dist/server.js`)
 
 If you see `/opt/render/project/src/dist/server.js` in the error, it means your Root Directory is set to `src` - change it to `.` or leave it empty.
+
+### Error: No open ports detected on 0.0.0.0
+
+This means your app is binding to `localhost` instead of `0.0.0.0`. Make sure:
+- Set environment variable `HOST` = `0.0.0.0` in Render dashboard
+- Or the app will default to `0.0.0.0` when `NODE_ENV=production`
 
 ### Module not found errors after deployment
 
