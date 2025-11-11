@@ -15,7 +15,8 @@
    - **Environment**: Node
    - **Region**: Choose your preferred region
    - **Branch**: main (or your default branch)
-   - **Build Command**: `npm install && npm run build`
+   - **Root Directory**: Leave EMPTY or set to `.` (NOT `src`)
+   - **Build Command**: `npm ci && npm run build`
    - **Start Command**: `node dist/server.js`
 
 3. **Add Environment Variables**
@@ -39,11 +40,14 @@ If you prefer infrastructure-as-code, the `render.yaml` file in the root directo
 
 ## Troubleshooting
 
-### Error: Cannot find module '/opt/render/project/dist/server.js'
+### Error: Cannot find module '/opt/render/project/dist/server.js' or '/opt/render/project/src/dist/server.js'
 
-This happens when the start command uses a wrong path. Make sure:
-- Build command is: `npm install && npm run build`
-- Start command is: `node dist/server.js` (NOT `node ../dist/server.js`)
+This happens when the root directory or start command path is wrong. Make sure:
+- **Root Directory** in Render dashboard is EMPTY or set to `.` (NOT `src`)
+- Build command is: `npm ci && npm run build`
+- Start command is: `node dist/server.js` (NOT `node ../dist/server.js` or `node src/dist/server.js`)
+
+If you see `/opt/render/project/src/dist/server.js` in the error, it means your Root Directory is set to `src` - change it to `.` or leave it empty.
 
 ### Module not found errors after deployment
 
