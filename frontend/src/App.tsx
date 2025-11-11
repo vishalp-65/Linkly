@@ -9,7 +9,7 @@ import AuthProvider from './components/AuthProvider';
 import Navbar from './components/Navbar';
 import ProtectedRoute from './components/ProtectedRoute';
 import RedirectHandler from './components/RedirectHandler';
-import { LoadingFallback, SkipLink } from './components/common';
+import { LoadingFallback, SkipLink, OfflineIndicator } from './components/common';
 import { ResourcePreloader } from './utils/preloader';
 import { ServiceWorkerManager } from './utils/serviceWorker';
 import { useKeyboardDetection } from './hooks/useKeyboardNavigation';
@@ -76,6 +76,7 @@ function App() {
             <Router>
               <div className="App min-h-screen bg-slate-100 dark:bg-gray-900 transition-colors duration-200">
                 <SkipLink href="#main-content">Skip to main content</SkipLink>
+                <OfflineIndicator />
                 <Suspense
                   fallback={
                     <LoadingFallback message="Loading application..." />
