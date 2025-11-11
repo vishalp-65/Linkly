@@ -243,6 +243,18 @@ export const api = createApi({
       }),
     }),
 
+    deleteAccount: builder.mutation<
+      ApiResponse<{ message: string }>,
+      { password: string; confirmText: string }
+    >({
+      query: (data) => ({
+        url: '/user/account',
+        method: 'DELETE',
+        body: data,
+      }),
+      invalidatesTags: ['Auth', 'URLs', 'Analytics', 'Permissions', 'Preferences', 'Notifications'],
+    }),
+
     // URL Endpoints
     createShortUrl: builder.mutation<
       ApiResponse<URLItem>,
@@ -460,6 +472,7 @@ export const {
   useGetNotificationSettingsQuery,
   useUpdateNotificationSettingsMutation,
   useTestWebhookMutation,
+  useDeleteAccountMutation,
   // URLs
   useCreateShortUrlMutation,
   useCheckAliasAvailabilityQuery,

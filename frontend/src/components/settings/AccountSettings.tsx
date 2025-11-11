@@ -1,9 +1,11 @@
 import React, { useState } from 'react';
 import { Card, Button, Input, FormField, Modal } from '../common';
 import { useToast } from '../../contexts/ToastContext';
-import { useSelector } from 'react-redux';
+import { useSelector, useDispatch } from 'react-redux';
 import type { RootState } from '../../store';
-import { useChangePasswordMutation } from '../../services/api';
+import { useChangePasswordMutation, useDeleteAccountMutation } from '../../services/api';
+import { logout } from '../../store/authSlice';
+import { useNavigate } from 'react-router-dom';
 // FontAwesome icons are loaded globally via CSS
 
 // Types
@@ -31,7 +33,10 @@ const DELETE_CONFIRMATION_TEXT = 'DELETE';
 const AccountSettings: React.FC = () => {
     const { showToast } = useToast();
     const { user } = useSelector((state: RootState) => state.auth);
+    const dispatch = useDispatch();
+    const navigate = useNavigate();
     const [changePassword] = useChangePasswordMutation();
+    const [deleteAccount] = useDeleteAccountMutation();
 
     // Modal states
     const [isEmailModalOpen, setIsEmailModalOpen] = useState(false);
@@ -152,12 +157,28 @@ const AccountSettings: React.FC = () => {
 
         setIsLoading(true);
         try {
-            await new Promise(resolve => setTimeout(resolve, 1000));
-            showToast({ message: 'Account deletion initiated', type: 'success' });
+            await deleteAccount({
+                password: deleteForm.password,
+                confirmText: deleteForm.confirmText
+            }).unwrap();
+
+            showToast({
+                message: 'Account deleted successfully. You will be logged out.',
+                type: 'success'
+            });
+
             setIsDeleteModalOpen(false);
             resetDeleteForm();
-        } catch (error) {
-            showToast({ message: 'Failed to delete account', type: 'error' });
+
+            // Wait a moment for the user to see the success message
+            setTimeout(() => {
+                dispatch(logout());
+                navigate('/login');
+            }, 1500);
+        } catch (error: any) {
+            const errMsg = error?.data?.message ||
+                'Failed to delete account. Please check your password and try again.';
+            showToast({ message: errMsg, type: 'error' });
         } finally {
             setIsLoading(false);
         }
