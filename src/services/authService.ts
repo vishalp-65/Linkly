@@ -182,6 +182,14 @@ export class AuthService {
     }
 
     /**
+     * Delete user account and all associated data
+     */
+    async deleteUser(userId: number): Promise<void> {
+        await this.userRepository.deleteUser(userId);
+        logger.info('User account deleted', { userId });
+    }
+
+    /**
      * Verify JWT access token
      */
     verifyAccessToken(token: string): JwtPayload {

@@ -1,81 +1,158 @@
-# Use Node.js 18 LTS as base image
-FROM node:18-alpine AS base
+# ============================================
+# OPTIMIZED MULTI-STAGE DOCKERFILE
+# ============================================
 
-# Set working directory
+# ============================================
+# Stage 1: Dependencies Base
+# ============================================
+FROM node:18-alpine AS deps
+
 WORKDIR /app
 
-# Install dependencies for building native modules
-RUN apk add --no-cache python3 make g++
+# Install system dependencies needed for native modules
+RUN apk add --no-cache \
+    python3 \
+    make \
+    g++ \
+    && rm -rf /var/cache/apk/*
 
 # Copy package files
 COPY package*.json ./
 
-# Install dependencies
-RUN npm ci --only=production && npm cache clean --force
+# Install production dependencies only
+RUN npm ci --only=production \
+    && npm cache clean --force
 
-# Development stage
-FROM node:18-alpine AS development
+# ============================================
+# Stage 2: Development Dependencies
+# ============================================
+FROM node:18-alpine AS dev-deps
 
-# Set working directory
 WORKDIR /app
 
-# Install dependencies for building native modules and development tools
-RUN apk add --no-cache python3 make g++ git
+# Install system dependencies
+RUN apk add --no-cache \
+    python3 \
+    make \
+    g++ \
+    git \
+    && rm -rf /var/cache/apk/*
 
-# Copy package files first for better caching
+# Copy package files
 COPY package*.json ./
 
-# Install ALL dependencies (including dev dependencies)
-RUN npm ci && npm cache clean --force
+# Install all dependencies (including dev)
+RUN npm ci \
+    && npm cache clean --force
+
+# ============================================
+# Stage 3: Build Stage
+# ============================================
+FROM node:18-alpine AS builder
+
+WORKDIR /app
+
+# Copy dependencies from dev-deps stage
+COPY --from=dev-deps /app/node_modules ./node_modules
 
 # Copy source code
 COPY . .
 
-# Create logs directory
-RUN mkdir -p logs
-
-# Expose port
-EXPOSE 3000
-
-# Start development server with fallback
-CMD ["sh", "-c", "npm run dev || (echo 'Installing dependencies...' && npm install && npm run dev)"]
-
-# Build stage
-FROM base AS build
-RUN npm ci
-COPY . .
+# Build the application
 RUN npm run build
 
-# Production stage
-FROM node:18-alpine AS production
+# Remove dev dependencies after build
+RUN npm prune --production
 
-# Create app user
-RUN addgroup -g 1001 -S nodejs
-RUN adduser -S nodejs -u 1001
+# ============================================
+# Stage 4: Development Stage
+# ============================================
+FROM node:18-alpine AS development
 
-# Set working directory
 WORKDIR /app
 
-# Copy package files and install production dependencies
+# Install runtime dependencies
+RUN apk add --no-cache \
+    dumb-init \
+    curl \
+    && rm -rf /var/cache/apk/*
+
+# Copy package files first
 COPY package*.json ./
-RUN npm ci --only=production && npm cache clean --force
 
-# Copy built application
-COPY --from=build --chown=nodejs:nodejs /app/dist ./dist
-COPY --from=build --chown=nodejs:nodejs /app/package.json ./
+# Copy dev dependencies
+COPY --from=dev-deps /app/node_modules ./node_modules
 
-# Create logs directory
-RUN mkdir -p logs && chown nodejs:nodejs logs
+# Copy tsconfig and other config files
+COPY tsconfig.json ./
+COPY .swcrc* ./
+
+# Copy source code
+COPY . .
+
+# Create logs directory with proper permissions
+RUN mkdir -p logs && chmod 755 logs
+
+# Use .env from root (will be mounted or copied)
+# Application will load it automatically
+
+# Set NODE_OPTIONS to handle ES modules properly
+ENV NODE_OPTIONS="--loader ts-node/esm --experimental-specifier-resolution=node"
+
+# Expose application and WebSocket ports
+EXPOSE 3000
+
+# Use dumb-init to handle signals properly
+ENTRYPOINT ["dumb-init", "--"]
+
+# Start development server
+CMD ["npm", "run", "dev"]
+
+# ============================================
+# Stage 5: Production Stage (Optimized)
+# ============================================
+FROM node:18-alpine AS production
+
+WORKDIR /app
+
+# Install only runtime dependencies
+RUN apk add --no-cache \
+    dumb-init \
+    curl \
+    && rm -rf /var/cache/apk/*
+
+# Create non-root user for security
+RUN addgroup -g 1001 -S nodejs \
+    && adduser -S nodejs -u 1001
+
+# Copy production dependencies from deps stage
+COPY --from=deps --chown=nodejs:nodejs /app/node_modules ./node_modules
+
+# Copy built application from builder stage
+COPY --from=builder --chown=nodejs:nodejs /app/dist ./dist
+COPY --from=builder --chown=nodejs:nodejs /app/package*.json ./
+
+# Create logs directory with proper permissions
+RUN mkdir -p logs \
+    && chown -R nodejs:nodejs logs \
+    && chmod 755 logs
+
+# Use .env from root (will be mounted or copied)
+# Ensure .env is accessible by nodejs user
+RUN touch .env && chown nodejs:nodejs .env
 
 # Switch to non-root user
 USER nodejs
 
-# Expose port
+# Expose application and WebSocket ports
 EXPOSE 3000
 
-# Health check
-HEALTHCHECK --interval=60s --timeout=3s --start-period=5s --retries=3 \
-  CMD node -e "require('http').get('http://localhost:3000/health', (res) => { process.exit(res.statusCode === 200 ? 0 : 1) }).on('error', () => process.exit(1))"
+# Health check with faster intervals
+HEALTHCHECK --interval=30s --timeout=3s --start-period=10s --retries=2 \
+    CMD curl -f http://localhost:3000/health || exit 1
 
-# Start the application
+# Use dumb-init to handle signals properly
+ENTRYPOINT ["dumb-init", "--"]
+
+# Start production server
 CMD ["node", "dist/server.js"]

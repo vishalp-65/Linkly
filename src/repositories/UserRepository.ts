@@ -432,4 +432,44 @@ export class UserRepository {
             throw error;
         }
     }
+
+    /**
+     * Delete user account and all associated data
+     */
+    async deleteUser(userId: number): Promise<void> {
+        const client = await db.getClient();
+
+        try {
+            await client.query('BEGIN');
+
+            // Delete in order to respect foreign key constraints
+            // First delete analytics data for user's URLs
+            await client.query('DELETE FROM analytics_events WHERE short_code IN (SELECT short_code FROM url_mappings WHERE user_id = $1)', [userId]);
+            await client.query('DELETE FROM analytics_daily_summaries WHERE short_code IN (SELECT short_code FROM url_mappings WHERE user_id = $1)', [userId]);
+
+            // Delete URL mappings
+            await client.query('DELETE FROM url_mappings WHERE user_id = $1', [userId]);
+
+            // Delete user preferences and notification settings
+            await client.query('DELETE FROM user_preferences WHERE user_id = $1', [userId]);
+            await client.query('DELETE FROM notification_settings WHERE user_id = $1', [userId]);
+
+            // Delete authentication tokens
+            await client.query('DELETE FROM refresh_tokens WHERE user_id = $1', [userId]);
+            await client.query('DELETE FROM password_reset_tokens WHERE user_id = $1', [userId]);
+            await client.query('DELETE FROM email_verification_tokens WHERE user_id = $1', [userId]);
+
+            // Finally delete the user
+            await client.query('DELETE FROM users WHERE user_id = $1', [userId]);
+
+            await client.query('COMMIT');
+            logger.info('User account and all associated data deleted', { userId });
+        } catch (error) {
+            await client.query('ROLLBACK');
+            logger.error('Error deleting user account', { error, userId });
+            throw error;
+        } finally {
+            client.release();
+        }
+    }
 }

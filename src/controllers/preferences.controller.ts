@@ -231,19 +231,13 @@ export class PreferencesController {
                 throw ApiError.unauthorized('Invalid password');
             }
 
-            // TODO: Implement account deletion logic
-            // This should:
-            // 1. Delete all user URLs
-            // 2. Delete all analytics data
-            // 3. Delete all preferences
-            // 4. Delete all tokens
-            // 5. Delete user account
-            // For now, we'll just log it
+            // Delete user account and all associated data
+            await this.authService.deleteUser(req.user.userId);
 
-            logger.warn('Account deletion requested', { userId: req.user.userId });
+            logger.info('Account deleted successfully', { userId: req.user.userId });
 
             ApiResponse.success(res, {
-                message: 'Account deletion initiated. This feature is not yet fully implemented.'
+                message: 'Account deleted successfully'
             });
         } catch (error) {
             next(error);

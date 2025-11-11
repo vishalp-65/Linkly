@@ -1,9 +1,121 @@
 services:
   - type: web
-    name: url-shortener
-    env: node
-    region: oregon
-    plan: free
-    rootDir: .
-    buildCommand: npm install --include=dev && npm run build && npm prune --production
-    startCommand: node dist/server.js
+    name: linkly-api
+    runtime: docker
+    dockerfilePath: ./Dockerfile
+    dockerContext: .
+    plan: free  # Change to 'starter' or higher for production
+    region: singapore  # Change to your preferred region
+    branch: main  # Change to your default branch
+    
+    # Health check configuration
+    healthCheckPath: /health
+    
+    # Environment variables
+    # Note: For sensitive values, use Render's dashboard to set them as secrets
+    envVars:
+      # Server Configuration
+      - key: NODE_ENV
+        value: production
+      - key: HOST
+        value: 0.0.0.0
+      - key: PORT
+        value: 3000
+      
+      # Database Configuration (Set these in Render dashboard as secrets)
+      - key: DB_HOST
+        sync: false  # Set manually in dashboard
+      - key: DB_PORT
+        value: 5432
+      - key: DB_NAME
+        sync: false  # Set manually in dashboard
+      - key: DB_USER
+        sync: false  # Set manually in dashboard
+      - key: DB_PASSWORD
+        sync: false  # Set manually in dashboard
+      - key: DB_POOL_MIN
+        value: 2
+      - key: DB_POOL_MAX
+        value: 10
+      - key: DB_CONNECTION_TIMEOUT
+        value: 30000
+      - key: DB_IDLE_TIMEOUT
+        value: 30000
+      - key: DB_SSL_CA
+        sync: false  # Set manually in dashboard (paste full certificate)
+      
+      # Redis Configuration (Set these in Render dashboard as secrets)
+      - key: REDIS_HOST
+        sync: false  # Set manually in dashboard
+      - key: REDIS_PORT
+        value: 6379
+      - key: REDIS_PASSWORD
+        sync: false  # Set manually in dashboard
+      - key: REDIS_DB
+        value: 0
+      - key: REDIS_MAX_RETRIES
+        value: 3
+      - key: REDIS_RETRY_DELAY
+        value: 100
+      
+      # Security (Set these in Render dashboard as secrets)
+      - key: JWT_SECRET
+        generateValue: true  # Render will auto-generate
+      - key: JWT_REFRESH_SECRET
+        generateValue: true  # Render will auto-generate
+      - key: API_KEY_SECRET
+        generateValue: true  # Render will auto-generate
+      - key: BCRYPT_ROUNDS
+        value: 12
+      
+      # Rate Limiting
+      - key: RATE_LIMIT_WINDOW_MS
+        value: 60000
+      - key: RATE_LIMIT_MAX_REQUESTS
+        value: 100
+      
+      # Logging
+      - key: LOG_LEVEL
+        value: info
+      - key: LOG_FILE_PATH
+        value: logs/app.log
+      - key: LOG_MAX_SIZE
+        value: 10m
+      - key: LOG_MAX_FILES
+        value: 5
+      
+      # Analytics (Optional - Kafka)
+      - key: KAFKA_BROKERS
+        value: localhost:9092
+      - key: KAFKA_TOPIC_CLICKS
+        value: url_clicks
+      - key: KAFKA_CLIENT_ID
+        value: url-shortener-api
+      
+      # Monitoring
+      - key: METRICS_PORT
+        value: 9090
+      - key: HEALTH_CHECK_TIMEOUT
+        value: 5000
+      
+      # Tracing (Optional)
+      - key: TRACING_ENABLED
+        value: false
+      - key: JAEGER_ENDPOINT
+        value: http://localhost:14268/api/traces
+      - key: ZIPKIN_ENDPOINT
+        value: http://localhost:9411/api/v2/spans
+      
+      # CORS (Set your frontend domain)
+      - key: ALLOWED_ORIGINS
+        sync: false  # Set manually in dashboard with your frontend URL
+
+# Optional: Add a PostgreSQL database managed by Render
+# databases:
+#   - name: linkly-db
+#     plan: free
+#     databaseName: linkly
+#     user: linkly_user
+
+# Optional: Add a Redis instance managed by Render
+# (Note: Redis is not available on Render's free tier)

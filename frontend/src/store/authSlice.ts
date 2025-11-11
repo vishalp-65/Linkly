@@ -251,6 +251,23 @@ const authSlice = createSlice({
         state.error = action.payload?.data?.message || 'Failed to reset password';
       })
 
+      // Delete Account
+      .addMatcher(api.endpoints.deleteAccount.matchFulfilled, (state) => {
+        // Account deleted successfully, clear auth state
+        state.user = null;
+        state.tokens = null;
+        state.isAuthenticated = false;
+        state.isGuest = true;
+        state.permissions = null;
+        state.error = null;
+
+        localStorage.removeItem('accessToken');
+        localStorage.removeItem('refreshToken');
+      })
+      .addMatcher(api.endpoints.deleteAccount.matchRejected, (state, action: any) => {
+        state.error = action.payload?.data?.message || 'Failed to delete account';
+      })
+
       // Handle 401 errors
       .addMatcher(
         (action) =>
