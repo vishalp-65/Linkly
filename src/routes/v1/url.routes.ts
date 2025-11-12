@@ -64,6 +64,19 @@ router.delete(
     asyncHandler(urlController.deleteUrl)
 )
 
+// Bulk Actions
+router.post(
+    "/bulk/delete",
+    authMiddleware.authenticate,
+    asyncHandler(urlController.bulkDelete)
+)
+
+router.post(
+    "/bulk/update-expiry",
+    authMiddleware.authenticate,
+    asyncHandler(urlController.bulkUpdateExpiry)
+)
+
 // Get long/original URL by shortCode (keep last)
 router.get(
     "/:shortCode",

@@ -782,4 +782,36 @@ export class URLRepository
             throw this.handleDatabaseError(error);
         }
     }
+
+    /**
+     * Update expiry date for a URL
+     */
+    async updateExpiry(shortCode: string, expiryDate: Date | null): Promise<boolean> {
+        try {
+            const query = `
+                UPDATE url_mappings
+                SET expires_at = $1, updated_at = NOW()
+                WHERE short_code = $2 AND NOT is_deleted
+                RETURNING short_code
+            `;
+
+            const result = await this.query(query, [expiryDate, shortCode]);
+
+            if (result.rows.length === 0) {
+                return false;
+            }
+
+            logger.info('URL expiry updated', {
+                shortCode,
+                expiryDate: expiryDate ? expiryDate.toISOString() : 'removed'
+            });
+            return true;
+        } catch (error) {
+            logger.error('Failed to update URL expiry', {
+                shortCode,
+                error: error instanceof Error ? error.message : 'Unknown error'
+            });
+            throw this.handleDatabaseError(error);
+        }
+    }
 }

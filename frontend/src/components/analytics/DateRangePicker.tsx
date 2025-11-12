@@ -15,34 +15,25 @@ interface DateRangePickerProps {
     disabled?: boolean;
 }
 
-const DateRangePicker: React.FC<DateRangePickerProps> = ({
-    value,
-    onChange,
-    className = '',
-    disabled = false
-}) => {
+const DateRangePicker: React.FC<DateRangePickerProps> = ({ value, onChange, className = '', disabled = false }) => {
     const [isOpen, setIsOpen] = useState(false);
     const [selectedPreset, setSelectedPreset] = useState<string>('custom');
     const containerRef = useRef<HTMLDivElement>(null);
 
-    // Check if current value matches any preset
     useEffect(() => {
         const matchingPreset = presets.find(preset => {
             const presetValue = preset.getValue();
             return presetValue.start === value.start && presetValue.end === value.end;
         });
-
         setSelectedPreset(matchingPreset?.key || 'custom');
     }, [value]);
 
-    // Close dropdown when clicking outside
     useEffect(() => {
         const handleClickOutside = (event: MouseEvent) => {
             if (containerRef.current && !containerRef.current.contains(event.target as Node)) {
                 setIsOpen(false);
             }
         };
-
         if (isOpen) {
             document.addEventListener('mousedown', handleClickOutside);
         }
@@ -64,14 +55,9 @@ const DateRangePicker: React.FC<DateRangePickerProps> = ({
 
     const formatDisplayValue = () => {
         if (value.label) return value.label;
-
         const startDate = new Date(value.start);
         const endDate = new Date(value.end);
-
-        if (value.start === value.end) {
-            return startDate.toLocaleDateString();
-        }
-
+        if (value.start === value.end) return startDate.toLocaleDateString();
         return `${startDate.toLocaleDateString()} - ${endDate.toLocaleDateString()}`;
     };
 
@@ -79,53 +65,52 @@ const DateRangePicker: React.FC<DateRangePickerProps> = ({
 
     return (
         <div className={`relative ${className}`} ref={containerRef}>
-            {/* Trigger Button */}
             <button
                 type="button"
                 onClick={() => !disabled && setIsOpen(!isOpen)}
                 disabled={disabled}
-                className={`
-                    flex items-center justify-between w-full px-3 py-2 text-sm bg-white dark:bg-gray-800 border border-gray-300 dark:border-gray-600 rounded-md shadow-sm
-                    ${disabled
-                        ? 'cursor-not-allowed bg-gray-50 dark:bg-gray-900 text-gray-500 dark:text-gray-600'
-                        : 'hover:bg-gray-50 dark:hover:bg-gray-700 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500'
-                    }
-                    ${!isValidRange ? 'border-red-300 dark:border-red-700 text-red-900 dark:text-red-400' : 'text-gray-900 dark:text-white'}
-                `}
+                className={`flex items-center justify-between w-full px-4 py-2.5 text-sm bg-white dark:bg-gray-800 border rounded-lg shadow-sm transition-all duration-200 ${disabled
+                        ? 'cursor-not-allowed bg-gray-50 dark:bg-gray-900 text-gray-400 dark:text-gray-600 border-gray-200 dark:border-gray-700'
+                        : 'hover:bg-gray-50 dark:hover:bg-gray-700 focus:outline-none focus:ring-2 focus:ring-blue-500 dark:focus:ring-blue-600 focus:border-transparent border-gray-300 dark:border-gray-600'
+                    } ${!isValidRange ? 'border-red-300 dark:border-red-700' : ''}`}
             >
-                <div className="flex items-center gap-2">
-                    <svg className="w-4 h-4 text-gray-400 dark:text-gray-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <div className="flex items-center gap-2.5">
+                    <svg className="w-4 h-4 text-gray-500 dark:text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
                     </svg>
-                    <span className="truncate">
+                    <span className={`truncate font-medium ${!isValidRange ? 'text-red-600 dark:text-red-400' : 'text-gray-900 dark:text-white'}`}>
                         {isValidRange ? formatDisplayValue() : 'Select date range'}
                     </span>
                 </div>
-                <svg className={`w-4 h-4 text-gray-400 dark:text-gray-500 transition-transform ${isOpen ? 'rotate-180' : ''}`} fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <svg className={`w-4 h-4 text-gray-500 dark:text-gray-400 transition-transform duration-200 ${isOpen ? 'rotate-180' : ''}`} fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
                 </svg>
             </button>
 
-            {/* Dropdown */}
             {isOpen && (
-                <div className="absolute z-50 mt-1 w-full min-w-[320px] bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg shadow-lg">
-                    <div className="p-4">
-                        {/* Preset Options */}
+                <div className="absolute z-50 mt-2 w-full sm:w-96 bg-white dark:bg-gray-800 rounded-xl shadow-2xl dark:shadow-gray-900/50 border border-gray-200 dark:border-gray-700 overflow-hidden animate-scale-in">
+                    <div className="p-5">
+                        {/* Header */}
                         <div className="mb-4">
-                            <h4 className="text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">Quick Select</h4>
+                            <h4 className="text-sm font-semibold text-gray-900 dark:text-white mb-1">Select Date Range</h4>
+                            <p className="text-xs text-gray-600 dark:text-gray-400">Choose a preset or custom range</p>
+                        </div>
+
+                        {/* Preset Options */}
+                        <div className="mb-5">
+                            <label className="text-xs font-medium text-gray-700 dark:text-gray-300 uppercase tracking-wide mb-2 block">
+                                Quick Select
+                            </label>
                             <div className="grid grid-cols-2 gap-2">
                                 {presets.map((preset) => (
                                     <button
                                         key={preset.key}
                                         type="button"
                                         onClick={() => handlePresetSelect(preset)}
-                                        className={`
-                                            px-3 py-2 text-sm rounded-md text-left transition-colors
-                                            ${selectedPreset === preset.key
-                                                ? 'bg-blue-100 dark:bg-blue-900/30 text-blue-700 dark:text-blue-300 border border-blue-200 dark:border-blue-700'
-                                                : 'bg-gray-50 dark:bg-gray-700 text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-600 border border-transparent'
-                                            }
-                                        `}
+                                        className={`px-3 py-2.5 text-sm rounded-lg text-left transition-all duration-200 ${selectedPreset === preset.key
+                                                ? 'bg-gradient-to-r from-blue-600 to-indigo-600 text-white shadow-md transform scale-[1.02]'
+                                                : 'bg-gray-50 dark:bg-gray-700/50 text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700 border border-transparent hover:border-gray-300 dark:hover:border-gray-600'
+                                            }`}
                                     >
                                         {preset.label}
                                     </button>
@@ -134,11 +119,13 @@ const DateRangePicker: React.FC<DateRangePickerProps> = ({
                         </div>
 
                         {/* Custom Date Range */}
-                        <div className="border-t border-gray-200 dark:border-gray-700 pt-4">
-                            <h4 className="text-sm font-medium text-gray-700 dark:text-gray-300 mb-3">Custom Range</h4>
+                        <div className="pt-5 border-t border-gray-200 dark:border-gray-700">
+                            <label className="text-xs font-medium text-gray-700 dark:text-gray-300 uppercase tracking-wide mb-3 block">
+                                Custom Range
+                            </label>
                             <div className="space-y-3">
                                 <div>
-                                    <label className="block text-xs font-medium text-gray-600 dark:text-gray-400 mb-1">
+                                    <label className="block text-xs font-medium text-gray-600 dark:text-gray-400 mb-1.5">
                                         Start Date
                                     </label>
                                     <DatePicker
@@ -150,7 +137,7 @@ const DateRangePicker: React.FC<DateRangePickerProps> = ({
                                     />
                                 </div>
                                 <div>
-                                    <label className="block text-xs font-medium text-gray-600 dark:text-gray-400 mb-1">
+                                    <label className="block text-xs font-medium text-gray-600 dark:text-gray-400 mb-1.5">
                                         End Date
                                     </label>
                                     <DatePicker
@@ -165,11 +152,11 @@ const DateRangePicker: React.FC<DateRangePickerProps> = ({
                         </div>
 
                         {/* Actions */}
-                        <div className="flex justify-end gap-2 mt-4 pt-4 border-t border-gray-200 dark:border-gray-700">
+                        <div className="flex justify-end gap-2 mt-5 pt-5 border-t border-gray-200 dark:border-gray-700">
                             <button
                                 type="button"
                                 onClick={() => setIsOpen(false)}
-                                className="px-3 py-1.5 text-sm text-gray-600 dark:text-gray-400 hover:text-gray-800 dark:hover:text-gray-200 transition-colors"
+                                className="px-4 py-2 text-sm font-medium text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-lg transition-colors"
                             >
                                 Cancel
                             </button>
@@ -177,13 +164,10 @@ const DateRangePicker: React.FC<DateRangePickerProps> = ({
                                 type="button"
                                 onClick={() => setIsOpen(false)}
                                 disabled={!isValidRange}
-                                className={`
-                                    px-3 py-1.5 text-sm rounded-md transition-colors
-                                    ${isValidRange
-                                        ? 'bg-blue-600 dark:bg-blue-700 text-white hover:bg-blue-700 dark:hover:bg-blue-600'
-                                        : 'bg-gray-300 dark:bg-gray-700 text-gray-500 dark:text-gray-600 cursor-not-allowed'
-                                    }
-                                `}
+                                className={`px-4 py-2 text-sm font-medium rounded-lg transition-all duration-200 ${isValidRange
+                                        ? 'bg-gradient-to-r from-blue-600 to-indigo-600 text-white hover:from-blue-700 hover:to-indigo-700 shadow-md hover:shadow-lg active:scale-95'
+                                        : 'bg-gray-200 dark:bg-gray-700 text-gray-400 dark:text-gray-600 cursor-not-allowed'
+                                    }`}
                             >
                                 Apply
                             </button>
@@ -191,6 +175,22 @@ const DateRangePicker: React.FC<DateRangePickerProps> = ({
                     </div>
                 </div>
             )}
+
+            <style>{`
+                @keyframes scale-in {
+                    from {
+                        opacity: 0;
+                        transform: scale(0.95) translateY(-10px);
+                    }
+                    to {
+                        opacity: 1;
+                        transform: scale(1) translateY(0);
+                    }
+                }
+                .animate-scale-in {
+                    animation: scale-in 0.15s ease-out;
+                }
+            `}</style>
         </div>
     );
 };

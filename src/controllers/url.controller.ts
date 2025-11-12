@@ -615,4 +615,196 @@ export class UrlController {
             next(error)
         }
     }
+
+    bulkDelete = async (
+        req: Request,
+        res: Response,
+        next: NextFunction
+    ): Promise<void> => {
+        const startTime = Date.now()
+        const { shortCodes } = req.body
+        const userId = this.getUserId(req)
+
+        try {
+            if (!userId) {
+                throw ApiError.unauthorized(
+                    "Authentication is required to delete URLs"
+                )
+            }
+
+            if (!shortCodes || !Array.isArray(shortCodes) || shortCodes.length === 0) {
+                throw ApiError.badRequest(
+                    "Short codes array is required",
+                    "MISSING_SHORT_CODES"
+                )
+            }
+
+            const results = {
+                deleted: [] as string[],
+                failed: [] as { shortCode: string; reason: string }[]
+            }
+
+            for (const shortCode of shortCodes) {
+                try {
+                    const urlMapping = await this.urlRepository.findById(shortCode)
+
+                    if (!urlMapping || urlMapping.is_deleted) {
+                        results.failed.push({ shortCode, reason: "URL not found" })
+                        continue
+                    }
+
+                    if (urlMapping.user_id !== userId) {
+                        results.failed.push({ shortCode, reason: "Permission denied" })
+                        continue
+                    }
+
+                    const deleted = await this.urlRepository.delete(shortCode)
+
+                    if (deleted) {
+                        results.deleted.push(shortCode)
+                        await this.cacheService.removeCachedUrlMapping(shortCode).catch(() => { })
+                    } else {
+                        results.failed.push({ shortCode, reason: "Delete operation failed" })
+                    }
+                } catch (error) {
+                    results.failed.push({
+                        shortCode,
+                        reason: error instanceof Error ? error.message : "Unknown error"
+                    })
+                }
+            }
+
+            const responseTime = Date.now() - startTime
+
+            logger.info("Bulk delete completed", {
+                userId,
+                totalRequested: shortCodes.length,
+                deleted: results.deleted.length,
+                failed: results.failed.length,
+                responseTime
+            })
+
+            ApiResponse.success(res, results, 200, { responseTime })
+        } catch (error) {
+            const responseTime = Date.now() - startTime
+
+            logger.error("Bulk delete failed", {
+                userId,
+                error: error instanceof Error ? error.message : "Unknown error",
+                responseTime
+            })
+
+            next(error)
+        }
+    }
+
+    bulkUpdateExpiry = async (
+        req: Request,
+        res: Response,
+        next: NextFunction
+    ): Promise<void> => {
+        const startTime = Date.now()
+        const { shortCodes, action, days } = req.body
+        const userId = this.getUserId(req)
+
+        try {
+            if (!userId) {
+                throw ApiError.unauthorized(
+                    "Authentication is required to update URLs"
+                )
+            }
+
+            if (!shortCodes || !Array.isArray(shortCodes) || shortCodes.length === 0) {
+                throw ApiError.badRequest(
+                    "Short codes array is required",
+                    "MISSING_SHORT_CODES"
+                )
+            }
+
+            if (!action || !["extend", "remove"].includes(action)) {
+                throw ApiError.badRequest(
+                    "Action must be 'extend' or 'remove'",
+                    "INVALID_ACTION"
+                )
+            }
+
+            if (action === "extend" && (!days || days <= 0)) {
+                throw ApiError.badRequest(
+                    "Days must be a positive number for extend action",
+                    "INVALID_DAYS"
+                )
+            }
+
+            const results = {
+                updated: [] as string[],
+                failed: [] as { shortCode: string; reason: string }[]
+            }
+
+            for (const shortCode of shortCodes) {
+                try {
+                    const urlMapping = await this.urlRepository.findById(shortCode)
+
+                    if (!urlMapping || urlMapping.is_deleted) {
+                        results.failed.push({ shortCode, reason: "URL not found" })
+                        continue
+                    }
+
+                    if (urlMapping.user_id !== userId) {
+                        results.failed.push({ shortCode, reason: "Permission denied" })
+                        continue
+                    }
+
+                    let newExpiryDate: Date | null = null
+
+                    if (action === "extend") {
+                        const currentExpiry = urlMapping.expires_at
+                            ? new Date(urlMapping.expires_at)
+                            : new Date()
+                        newExpiryDate = new Date(currentExpiry.getTime() + days * 24 * 60 * 60 * 1000)
+                    }
+
+                    const updated = await this.urlRepository.updateExpiry(
+                        shortCode,
+                        newExpiryDate
+                    )
+
+                    if (updated) {
+                        results.updated.push(shortCode)
+                        await this.cacheService.removeCachedUrlMapping(shortCode).catch(() => { })
+                    } else {
+                        results.failed.push({ shortCode, reason: "Update operation failed" })
+                    }
+                } catch (error) {
+                    results.failed.push({
+                        shortCode,
+                        reason: error instanceof Error ? error.message : "Unknown error"
+                    })
+                }
+            }
+
+            const responseTime = Date.now() - startTime
+
+            logger.info("Bulk expiry update completed", {
+                userId,
+                action,
+                days,
+                totalRequested: shortCodes.length,
+                updated: results.updated.length,
+                failed: results.failed.length,
+                responseTime
+            })
+
+            ApiResponse.success(res, results, 200, { responseTime })
+        } catch (error) {
+            const responseTime = Date.now() - startTime
+
+            logger.error("Bulk expiry update failed", {
+                userId,
+                error: error instanceof Error ? error.message : "Unknown error",
+                responseTime
+            })
+
+            next(error)
+        }
+    }
 }

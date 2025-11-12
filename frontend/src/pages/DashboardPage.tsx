@@ -1,99 +1,99 @@
-import React, { useMemo } from 'react';
-import { useSelector } from 'react-redux';
-import type { RootState } from '../store';
+import React from 'react';
+// import { useSelector } from 'react-redux';
+// import type { RootState } from '../store';
+// import Card from '../components/common/Card';
+// import { useGetUserUrlsQuery } from '../services/api';
 import URLShortenerForm from '../components/URLShortenerForm';
-import Card from '../components/common/Card';
-import { useGetUserUrlsQuery } from '../services/api';
 import PageHeader from '../components/common/PageHeader';
 
-interface StatsCardProps {
-  title: string;
-  value: number;
-  change: string;
-  icon: React.ReactNode;
-  bgColor: string;
-  hoverColor: string;
-  gradientFrom: string;
-  gradientTo: string;
-}
+// interface StatsCardProps {
+//   title: string;
+//   value: number;
+//   change: string;
+//   icon: React.ReactNode;
+//   bgColor: string;
+//   hoverColor: string;
+//   gradientFrom: string;
+//   gradientTo: string;
+// }
 
-const StatsCard: React.FC<StatsCardProps> = ({
-  title,
-  value,
-  change,
-  icon,
-  bgColor,
-  hoverColor,
-  gradientFrom,
-  gradientTo,
-}) => {
-  return (
-    <Card
-      hover
-      padding="md"
-      className="dark:bg-gray-800 dark:border-gray-700 group"
-    >
-      <div className="flex items-center">
-        <div className="shrink-0">
-          <div
-            className={`p-3 ${bgColor} dark:opacity-80 rounded-lg ${hoverColor} transition-colors`}
-          >
-            {icon}
-          </div>
-        </div>
-        <div className="ml-5 w-0 flex-1">
-          <dl>
-            <dt className="text-sm font-medium text-gray-500 dark:text-gray-400 truncate">
-              {title}
-            </dt>
-            <dd className="text-2xl font-bold text-gray-900 dark:text-gray-100 mt-1">
-              <span
-                className={`bg-gradient-to-r ${gradientFrom} ${gradientTo} bg-clip-text text-transparent block truncate`}
-                title={value.toLocaleString()}
-              >
-                {value.toLocaleString()}
-              </span>
-            </dd>
+// const StatsCard: React.FC<StatsCardProps> = ({
+//   title,
+//   value,
+//   change,
+//   icon,
+//   bgColor,
+//   hoverColor,
+//   gradientFrom,
+//   gradientTo,
+// }) => {
+//   return (
+//     <Card
+//       hover
+//       padding="md"
+//       className="dark:bg-gray-800 dark:border-gray-700 group"
+//     >
+//       <div className="flex items-center">
+//         <div className="shrink-0">
+//           <div
+//             className={`p-3 ${bgColor} dark:opacity-80 rounded-lg ${hoverColor} transition-colors`}
+//           >
+//             {icon}
+//           </div>
+//         </div>
+//         <div className="ml-5 w-0 flex-1">
+//           <dl>
+//             <dt className="text-sm font-medium text-gray-500 dark:text-gray-400 truncate">
+//               {title}
+//             </dt>
+//             <dd className="text-2xl font-bold text-gray-900 dark:text-gray-100 mt-1">
+//               <span
+//                 className={`bg-gradient-to-r ${gradientFrom} ${gradientTo} bg-clip-text text-transparent block truncate`}
+//                 title={value.toLocaleString()}
+//               >
+//                 {value.toLocaleString()}
+//               </span>
+//             </dd>
 
-            <dd className="text-xs text-green-600 dark:text-green-400 font-medium mt-1">
-              {change} from last month
-            </dd>
-          </dl>
-        </div>
-      </div>
-    </Card>
-  );
-};
+//             <dd className="text-xs text-green-600 dark:text-green-400 font-medium mt-1">
+//               {change} from last month
+//             </dd>
+//           </dl>
+//         </div>
+//       </div>
+//     </Card>
+//   );
+// };
 
 const DashboardPage: React.FC = () => {
-  const { isGuest } = useSelector((state: RootState) => state.auth);
+  // const { isGuest } = useSelector((state: RootState) => state.auth);
 
-  const { data: urlsData } = useGetUserUrlsQuery(
-    { page: 1, pageSize: 20 },
-    { skip: isGuest }
-  );
+  // const { data: urlsData } = useGetUserUrlsQuery(
+  //   { page: 1, pageSize: 20 },
+  //   { skip: isGuest }
+  // );
 
-  const stats = useMemo(() => {
-    if (!urlsData?.data) {
-      return {
-        totalUrls: 0,
-        totalClicks: 0,
-        activeUrls: 0,
-      };
-    }
+  // const stats = useMemo(() => {
+  //   if (!urlsData?.data) {
+  //     return {
+  //       totalUrls: 0,
+  //       totalClicks: 0,
+  //       activeUrls: 0,
+  //     };
+  //   }
 
-    const urls = urlsData.data.data;
-    const totalUrls = urls.length;
-    const totalClicks = urls.reduce(
-      (sum: number, url) => sum + (url.access_count || 0),
-      0
-    );
-    const activeUrls = urls.filter(
-      (url) => !url.expires_at || new Date(url.expires_at) > new Date()
-    ).length;
+  //   const urls = urlsData.data.data;
+  //   const totalUrls = urls.length;
+  //   const totalClicks = urls.reduce(
+  //     (sum: number, url) => sum + (url.access_count || 0),
+  //     0
+  //   );
+  //   const activeUrls = urls.filter(
+  //     (url) => !url.expires_at || new Date(url.expires_at) > new Date()
+  //   ).length;
 
-    return { totalUrls, totalClicks, activeUrls };
-  }, [urlsData]);
+  //   return { totalUrls, totalClicks, activeUrls };
+  // }, [urlsData]);
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-gray-50 via-blue-50 to-indigo-100 dark:from-gray-900 dark:via-gray-800 dark:to-gray-900 relative">
@@ -111,7 +111,7 @@ const DashboardPage: React.FC = () => {
 
         <URLShortenerForm />
 
-        {!isGuest && (
+        {/* {!isGuest && (
           <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8 animate-fade-in">
             <StatsCard
               title="Total URLs"
@@ -194,8 +194,9 @@ const DashboardPage: React.FC = () => {
               gradientTo="to-purple-800"
             />
           </div>
-        )}
+        )} */}
       </div>
+
     </div>
   );
 };

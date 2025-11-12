@@ -12,6 +12,7 @@ export interface ModalProps {
     size?: 'sm' | 'md' | 'lg' | 'xl';
     closeOnOverlayClick?: boolean;
     closeOnEscape?: boolean;
+    className?: string;
 }
 
 const Modal: React.FC<ModalProps> = ({
@@ -22,14 +23,15 @@ const Modal: React.FC<ModalProps> = ({
     size = 'md',
     closeOnOverlayClick = true,
     closeOnEscape = true,
+    className,
 }) => {
     const modalRef = useRef<HTMLDivElement>(null);
 
     const sizeClasses = {
-        sm: 'max-w-md',
-        md: 'max-w-lg',
-        lg: 'max-w-2xl',
-        xl: 'max-w-3xl'
+        sm: 'max-w-sm sm:max-w-md',
+        md: 'max-w-md sm:max-w-lg',
+        lg: 'max-w-lg sm:max-w-2xl',
+        xl: 'max-w-xl sm:max-w-4xl'
     };
 
     // Use keyboard navigation hook for focus trapping and escape handling
@@ -85,49 +87,80 @@ const Modal: React.FC<ModalProps> = ({
             aria-modal="true"
             role="dialog"
         >
+            {/* Backdrop with animation */}
             <div
-                className="flex min-h-full items-end justify-center p-4 text-center sm:items-center sm:p-0"
+                className="fixed inset-0 bg-gradient-to-br from-black/60 via-black/50 to-black/60 dark:from-black/80 dark:via-black/70 dark:to-black/80 backdrop-blur-sm transition-all duration-300 ease-out"
+                onClick={handleOverlayClick}
+                aria-hidden="true"
+            />
+
+            <div
+                className={`flex min-h-full items-center justify-center p-3 sm:p-4 md:p-6 ${className || ''}`}
                 onClick={handleOverlayClick}
             >
-                <div className="fixed inset-0 bg-black/50 dark:bg-black/70 backdrop-blur-lg transition-opacity" />
-
-                <FocusTrap active={isOpen} className={"w-full items-center flex justify-center"}>
+                <FocusTrap active={isOpen} className="w-full flex items-center justify-center">
                     <div
                         ref={modalRef}
-                        className={`relative transform overflow-hidden rounded-lg bg-white dark:bg-gray-800 text-left shadow-xl transition-all sm:my-8 sm:w-full ${sizeClasses[size]}`}
+                        className={`relative w-full ${sizeClasses[size]} transform overflow-hidden rounded-2xl bg-white dark:bg-gray-800 text-left shadow-2xl dark:shadow-gray-900/50 transition-all duration-300 ease-out border border-gray-200 dark:border-gray-700 animate-modal-scale`}
                         tabIndex={-1}
                     >
-                        <div className="bg-white dark:bg-gray-800 px-4 pb-4 pt-5 sm:p-6 sm:pb-4">
-                            <div className="sm:flex sm:items-start">
-                                <div className="mt-3 text-center sm:ml-4 sm:mt-0 sm:text-left w-full">
-                                    {title && (
-                                        <h3
-                                            className="text-base font-semibold leading-6 text-gray-900 dark:text-gray-100 mb-4"
-                                            id="modal-title"
-                                        >
-                                            {title}
-                                        </h3>
-                                    )}
-                                    <div className="mt-2">
-                                        {children}
-                                    </div>
-                                </div>
+                        {/* Header */}
+                        {title && (
+                            <div className="relative bg-gradient-to-br from-gray-50 to-white dark:from-gray-800 dark:to-gray-800 px-5 sm:px-6 py-4 sm:py-5 border-b border-gray-200 dark:border-gray-700">
+                                <h3
+                                    className="text-lg sm:text-xl font-bold text-gray-900 dark:text-gray-100 pr-10"
+                                    id="modal-title"
+                                >
+                                    {title}
+                                </h3>
+                                <div className="absolute top-0 left-0 w-full h-1 bg-gradient-to-r from-blue-500 via-purple-500 to-pink-500"></div>
                             </div>
-                        </div>
+                        )}
 
+                        {/* Close button */}
                         <button
                             type="button"
-                            className="absolute right-0 top-0 m-4 text-gray-400 hover:text-gray-600 dark:text-gray-500 dark:hover:text-gray-300 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 rounded-md p-1 cursor-pointer"
+                            className={`absolute ${title ? 'top-4 sm:top-5' : 'top-3 sm:top-4'} right-4 sm:right-5 z-10 group inline-flex items-center justify-center w-8 h-8 sm:w-10 sm:h-10 rounded-full bg-gray-100 hover:bg-gray-200 dark:bg-gray-700 dark:hover:bg-gray-600 text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-200 transition-all duration-200 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 dark:focus:ring-offset-gray-800 shadow-sm hover:shadow-md active:scale-95 cursor-pointer`}
                             onClick={onClose}
                             aria-label="Close modal"
                         >
-                            <svg className="h-6 w-6" fill="none" viewBox="0 0 24 24" strokeWidth="1.5" stroke="currentColor" aria-hidden="true">
+                            <svg
+                                className="h-4 w-4 sm:h-6 sm:w-6 transition-transform group-hover:rotate-90 duration-200"
+                                fill="none"
+                                viewBox="0 0 24 24"
+                                strokeWidth="2"
+                                stroke="currentColor"
+                                aria-hidden="true"
+                            >
                                 <path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" />
                             </svg>
                         </button>
+
+                        {/* Content */}
+                        <div className={`px-5 sm:px-6 ${title ? 'py-5 sm:py-6' : 'pt-12 sm:pt-14 pb-5 sm:pb-6'}`}>
+                            {children}
+                        </div>
                     </div>
                 </FocusTrap>
             </div>
+
+            {/* Inline styles for animation */}
+            <style>{`
+                @keyframes modal-scale {
+                    from {
+                        opacity: 0;
+                        transform: scale(0.95) translateY(10px);
+                    }
+                    to {
+                        opacity: 1;
+                        transform: scale(1) translateY(0);
+                    }
+                }
+
+                .animate-modal-scale {
+                    animation: modal-scale 0.2s ease-out forwards;
+                }
+            `}</style>
         </div>
     );
 

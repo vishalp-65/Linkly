@@ -303,6 +303,30 @@ export const api = createApi({
       },
     }),
 
+    bulkDeleteUrls: builder.mutation<
+      ApiResponse<{ deleted: string[]; failed: Array<{ shortCode: string; reason: string }> }>,
+      string[]
+    >({
+      query: (shortCodes) => ({
+        url: '/url/bulk/delete',
+        method: 'POST',
+        body: { shortCodes },
+      }),
+      invalidatesTags: ['URLs', 'Analytics'],
+    }),
+
+    bulkUpdateExpiry: builder.mutation<
+      ApiResponse<{ updated: string[]; failed: Array<{ shortCode: string; reason: string }> }>,
+      { shortCodes: string[]; action: 'extend' | 'remove'; days?: number }
+    >({
+      query: (data) => ({
+        url: '/url/bulk/update-expiry',
+        method: 'POST',
+        body: data,
+      }),
+      invalidatesTags: ['URLs', 'Analytics'],
+    }),
+
     resolveUrl: builder.query<
       ApiResponse<{
         shortCode: string;
@@ -479,6 +503,8 @@ export const {
   useLazyCheckAliasAvailabilityQuery,
   useGetUserUrlsQuery,
   useDeleteUrlMutation,
+  useBulkDeleteUrlsMutation,
+  useBulkUpdateExpiryMutation,
   useResolveUrlQuery,
   useGetLongUrlByShortCodeQuery,
   useGetUrlByShortCodeQuery,
