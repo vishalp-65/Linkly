@@ -15,7 +15,7 @@ const Card: React.FC<CardProps> = ({
     className = '',
     title,
     description,
-    padding = 'md',
+    padding = 'none',
     hover = false,
     style = { animationDelay: '0s' },
 }) => {

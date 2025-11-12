@@ -139,7 +139,7 @@ const URLShortenerForm: React.FC<URLShortenerFormProps> = ({ onSuccess }) => {
     return (
         <>
             <Card className="bg-gradient-to-br from-white to-gray-50 dark:from-gray-800 dark:to-gray-800/50 shadow-lg hover:shadow-xl transition-shadow duration-300 mb-8">
-                <div className="p-5 sm:p-6">
+                <div className="p-5 sm:p-1">
                     {/* Header */}
                     <div className="mb-6">
                         <div className="flex items-center gap-3 mb-2">

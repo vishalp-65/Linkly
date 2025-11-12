@@ -222,7 +222,7 @@ const URLCard: React.FC<URLCardProps> = ({
                 <div className="p-2 sm:p-3">
                     <div className="flex flex-col gap-4">
                         {/* Header Section */}
-                        <div className="flex items-start justify-between gap-3">
+                        <div className="flex sm:flex-row flex-col items-start justify-between gap-3">
                             {/* Checkbox */}
                             {showCheckbox && onSelect && (
                                 <div className="flex items-start pt-1">
