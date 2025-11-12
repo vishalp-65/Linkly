@@ -14,7 +14,7 @@ interface LogEntry {
 const BackendHealthCheck: React.FC<BackendHealthCheckProps> = ({ children }) => {
     const skipHealthCheck = import.meta.env.VITE_SKIP_HEALTH_CHECK === 'true';
 
-    const [isBackendReady, setIsBackendReady] = useState(skipHealthCheck);
+    const [isBackendReady, setIsBackendReady] = useState<boolean | null>(skipHealthCheck ? true : null);
     const [logs, setLogs] = useState<LogEntry[]>([]);
     const [checkAttempts, setCheckAttempts] = useState(0);
     const [showRetryButton, setShowRetryButton] = useState(false);
@@ -22,6 +22,7 @@ const BackendHealthCheck: React.FC<BackendHealthCheckProps> = ({ children }) => 
     const logsEndRef = useRef<HTMLDivElement>(null);
     const healthCheckIntervalRef = useRef<any>(null);
     const logTimeoutsRef = useRef<any[]>([]);
+    const initialCheckDoneRef = useRef(false);
 
     const getHealthEndpoint = () => {
         const baseUrl = import.meta.env.VITE_BASE_URL || 'http://localhost:3000/api/v1';
@@ -45,7 +46,7 @@ const BackendHealthCheck: React.FC<BackendHealthCheckProps> = ({ children }) => 
         { message: 'FINALIZING STARTUP ...', type: 'info' as const, delay: 20000 },
         { message: 'OPTIMIZING DEPLOYMENT ...', type: 'info' as const, delay: 24000 },
         { message: 'CHECKING BACKEND STATUS ...', type: 'info' as const, delay: 28000 },
-        { message: 'STEADY HANDS. CLEAN LOGS. YOUR APP IS ALMOST LIVE ...', type: 'warning' as const, delay: 32000 },
+        { message: 'STEADY HANDS. CLEAN LOGS. LINKLY IS ALMOST LIVE ...', type: 'warning' as const, delay: 32000 },
     ];
 
     const addLog = (message: string, type: 'info' | 'success' | 'warning' | 'error' = 'info') => {
@@ -69,30 +70,11 @@ const BackendHealthCheck: React.FC<BackendHealthCheckProps> = ({ children }) => 
         logsEndRef.current?.scrollIntoView({ behavior: 'smooth' });
     }, [logs]);
 
-    // Display logs progressively with proper cleanup
-    useEffect(() => {
-        if (skipHealthCheck || isBackendReady) return;
-
-        logMessages.forEach((log) => {
-            const timeout = setTimeout(() => {
-                if (!isBackendReady) {
-                    addLog(log.message, log.type);
-                }
-            }, log.delay);
-            logTimeoutsRef.current.push(timeout);
-        });
-
-        return () => {
-            logTimeoutsRef.current.forEach(timeout => clearTimeout(timeout));
-            logTimeoutsRef.current = [];
-        };
-    }, [skipHealthCheck, isBackendReady]);
-
     // Check backend health
     const checkBackendHealth = async (): Promise<boolean> => {
         try {
             const controller = new AbortController();
-            const timeoutId = setTimeout(() => controller.abort(), 5000);
+            const timeoutId = setTimeout(() => controller.abort(), 2000);
 
             const response = await fetch(HEALTH_ENDPOINT, {
                 method: 'GET',
@@ -105,8 +87,6 @@ const BackendHealthCheck: React.FC<BackendHealthCheckProps> = ({ children }) => 
             clearTimeout(timeoutId);
 
             if (response.ok) {
-                addLog('✅ BACKEND IS READY. LAUNCHING APPLICATION ...', 'success');
-                setTimeout(() => setIsBackendReady(true), 1000);
                 return true;
             }
             return false;
@@ -118,20 +98,56 @@ const BackendHealthCheck: React.FC<BackendHealthCheckProps> = ({ children }) => 
         }
     };
 
-    // Health check polling with proper cleanup
+    // Initial immediate health check before rendering anything
     useEffect(() => {
-        if (skipHealthCheck || isBackendReady) return;
+        if (skipHealthCheck || initialCheckDoneRef.current) return;
+
+        initialCheckDoneRef.current = true;
+
+        const performInitialCheck = async () => {
+            const isHealthy = await checkBackendHealth();
+
+            if (isHealthy) {
+                // Backend is ready, render children immediately
+                setIsBackendReady(true);
+            } else {
+                // Backend not ready, show loading screen
+                setIsBackendReady(false);
+            }
+        };
+
+        performInitialCheck();
+    }, [skipHealthCheck]);
+
+    // Display logs progressively with proper cleanup (only if backend is not ready)
+    useEffect(() => {
+        if (skipHealthCheck || isBackendReady !== false) return;
+
+        logMessages.forEach((log) => {
+            const timeout = setTimeout(() => {
+                if (isBackendReady === false) {
+                    addLog(log.message, log.type);
+                }
+            }, log.delay);
+            logTimeoutsRef.current.push(timeout);
+        });
+
+        return () => {
+            logTimeoutsRef.current.forEach(timeout => clearTimeout(timeout));
+            logTimeoutsRef.current = [];
+        };
+    }, [skipHealthCheck, isBackendReady]);
+
+    // Health check polling with proper cleanup (only if backend is not ready)
+    useEffect(() => {
+        if (skipHealthCheck || isBackendReady !== false) return;
 
         const startHealthChecks = async () => {
-            // Initial check
-            const isHealthy = await checkBackendHealth();
-            if (isHealthy) return;
-
             setCheckAttempts(1);
 
             // Set up polling
             healthCheckIntervalRef.current = setInterval(async () => {
-                if (isBackendReady) {
+                if (isBackendReady !== false) {
                     if (healthCheckIntervalRef.current) {
                         clearInterval(healthCheckIntervalRef.current);
                     }
@@ -154,7 +170,11 @@ const BackendHealthCheck: React.FC<BackendHealthCheckProps> = ({ children }) => 
                     return newAttempts;
                 });
 
-                await checkBackendHealth();
+                const isHealthy = await checkBackendHealth();
+                if (isHealthy) {
+                    addLog('✅ BACKEND IS READY. LAUNCHING APPLICATION ...', 'success');
+                    setTimeout(() => setIsBackendReady(true), 1000);
+                }
             }, HEALTH_CHECK_INTERVAL);
         };
 
@@ -172,13 +192,22 @@ const BackendHealthCheck: React.FC<BackendHealthCheckProps> = ({ children }) => 
         setLogs([]);
         setCheckAttempts(0);
         setShowRetryButton(false);
+        setIsBackendReady(null);
+        initialCheckDoneRef.current = false;
         addLog('🔄 RETRYING CONNECTION ...', 'info');
     };
 
-    if (isBackendReady) {
+    // Don't render anything until initial check is complete
+    if (isBackendReady === null) {
+        return null;
+    }
+
+    // If backend is ready, render children immediately
+    if (isBackendReady === true) {
         return <>{children}</>;
     }
 
+    // Backend is not ready, show loading screen
     return (
         <div className="min-h-screen bg-black text-gray-300 font-mono flex flex-col items-center justify-center p-4 overflow-hidden">
             {/* ASCII Art Logo */}
@@ -236,7 +265,7 @@ const BackendHealthCheck: React.FC<BackendHealthCheckProps> = ({ children }) => 
                     <div ref={logsEndRef} />
 
                     {/* Blinking cursor */}
-                    {!isBackendReady && !showRetryButton && (
+                    {!showRetryButton && (
                         <div className="inline-block w-2 h-4 bg-gray-400 animate-blink ml-1"></div>
                     )}
                 </div>
