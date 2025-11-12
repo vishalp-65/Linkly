@@ -6,7 +6,6 @@ import AliasAvailabilityChecker from './AliasAvailabilityChecker';
 import Input from './common/Input';
 import Button from './common/Button';
 import Card from './common/Card';
-import Modal from './common/Modal';
 import URLResult, { type URLResultData } from './URLResult';
 import { useToast } from '../contexts/ToastContext';
 import { API_REDIRECT_BASE_URL } from '../utils/constant';
@@ -319,8 +318,7 @@ const URLShortenerForm: React.FC<URLShortenerFormProps> = ({ onSuccess }) => {
                 </div>
             </Card>
 
-            {/* <Modal isOpen={isModalOpen} onClose={() => setIsModalOpen(false)} size="xl">
-            </Modal> */}
+            {/* </Modal>  */}
             {urlResult &&
                 <URLResult
                     result={urlResult}

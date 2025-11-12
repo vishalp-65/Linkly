@@ -16,6 +16,7 @@ interface ModalProps {
   isOpen: boolean;
   onClose: () => void;
   closeOnOverlayClick?: boolean;
+  title?: string;
   closeOnEscape?: boolean;
 }
 
@@ -26,7 +27,7 @@ export interface URLResultProps {
 }
 
 const URLResult: React.FC<URLResultProps> = ({ result, onShowToast, modalProps }) => {
-  const { isOpen, onClose, closeOnOverlayClick = true, closeOnEscape = true } = modalProps;
+  const { isOpen, onClose, closeOnEscape = true, title = "Success! Your Link is Ready 🎉" } = modalProps;
   const [copied, setCopied] = useState(false);
   const modalRef = useRef<HTMLDivElement | null>(null);
 
@@ -166,7 +167,7 @@ const URLResult: React.FC<URLResultProps> = ({ result, onShowToast, modalProps }
           {/* Close button inside modal */}
           <button
             type="button"
-            className="absolute top-4 right-4 sm:top-5 sm:right-5 z-10 flex items-center justify-center w-8 h-8 sm:w-10 sm:h-10 rounded-full bg-gray-100 hover:bg-gray-200 dark:bg-gray-700 dark:hover:bg-gray-600 text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-200 transition-all duration-200 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 dark:focus:ring-offset-gray-800 shadow-sm hover:shadow-md active:scale-95"
+            className="absolute top-4 right-4 cursor-pointer sm:top-5 sm:right-5 z-10 flex items-center justify-center w-8 h-8 sm:w-10 sm:h-10 rounded-full bg-gray-100 hover:bg-gray-200 dark:bg-gray-700 dark:hover:bg-gray-600 text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-200 transition-all duration-200 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 dark:focus:ring-offset-gray-800 shadow-sm hover:shadow-md active:scale-95"
             onClick={onClose}
             aria-label="Close modal"
           >
@@ -205,7 +206,7 @@ const URLResult: React.FC<URLResultProps> = ({ result, onShowToast, modalProps }
               </div>
             </div>
             <h3 className="text-lg sm:text-xl font-bold text-gray-800 dark:text-gray-100 mb-2">
-              Success! Your Link is Ready 🎉
+              {title}
             </h3>
             <p className="text-xs sm:text-sm text-gray-600 dark:text-gray-400">
               Share it anywhere, anytime
