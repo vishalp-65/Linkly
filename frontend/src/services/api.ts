@@ -413,6 +413,7 @@ export const api = createApi({
         uniqueVisitors: number;
         clicksByDate: Array<{ date: string; clicks: number }>;
         clicksByCountry: Array<{ country: string; clicks: number }>;
+        clicksByIndianState?: Array<{ state: string; stateCode: string; clicks: number }>;
         clicksByDevice: Array<{ device: string; clicks: number }>;
         clicksByReferrer: Array<{ referrer: string; clicks: number }>;
       }>,

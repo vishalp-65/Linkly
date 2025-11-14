@@ -1,6 +1,5 @@
 import React from 'react';
 import { useTheme } from '../../contexts/ThemeContext';
-import Button from './Button';
 
 interface ThemeToggleProps {
   className?: string;
@@ -16,7 +15,6 @@ interface ThemeToggleProps {
 const ThemeToggle: React.FC<ThemeToggleProps> = ({
   className = '',
   showLabel = false,
-  size = 'md',
   showIcon = true,
   iconClass = "h-4 w-4",
 }) => {
@@ -77,14 +75,12 @@ const ThemeToggle: React.FC<ThemeToggleProps> = ({
 
   return (
     <div className="flex items-center">
-      <Button
-        variant="ghost"
-        size={size}
+      <button
+        type="button"
         onClick={handleThemeChange}
-        className={className}
+        className={`cursor-pointer ${className}`}
         aria-label={getLabel()}
         title={getLabel()}
-        showFocusRing={false}
       >
         {showIcon && getIcon()}
         {showLabel && (
@@ -92,7 +88,7 @@ const ThemeToggle: React.FC<ThemeToggleProps> = ({
             {resolvedTheme === 'light' ? 'Dark' : 'Light'}
           </span>
         )}
-      </Button>
+      </button>
     </div>
   );
 };
