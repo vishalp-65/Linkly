@@ -318,8 +318,22 @@ export class URLRedirectService {
             const deviceInfo = this.parseUserAgent(userAgent)
             const ipAddress = this.getClientIP(req)
 
+            logger.debug("Processing click analytics", {
+                shortCode,
+                ipAddress,
+                isPrivateIP: this.isPrivateIP(ipAddress),
+                device: deviceInfo.device
+            })
+
             // Get geolocation data with timeout (non-blocking)
             const geoData = await this.getGeoDataWithTimeout(ipAddress, 1500)
+
+            logger.debug("GeoIP data retrieved", {
+                shortCode,
+                ipAddress,
+                countryCode: geoData.country_code,
+                region: geoData.region
+            })
 
             // Prepare analytics data
             const analyticsData = {
@@ -332,6 +346,7 @@ export class URLRedirectService {
                 os: deviceInfo.os,
                 country_code: geoData.country_code || undefined,
                 region: geoData.region || undefined,
+                region_code: geoData.region_code || undefined,
                 city: geoData.city || undefined,
                 clicked_at: new Date()
             }
@@ -644,8 +659,29 @@ export class URLRedirectService {
 
     /**
      * Get client IP address from request
+     * Supports X-Forwarded-For header for proxied requests
+     * In development, supports X-Test-IP header for testing different geolocations
      */
     private getClientIP(req: Request): string {
+        // In development/test, allow overriding IP for testing
+        if (process.env.NODE_ENV !== 'production') {
+            const testIP = req.get('X-Test-IP');
+            if (testIP) {
+                logger.debug('Using test IP address', { testIP });
+                return testIP;
+            }
+        }
+
+        // Check X-Forwarded-For header (for proxied requests)
+        const forwardedFor = req.get('X-Forwarded-For');
+        if (forwardedFor) {
+            // X-Forwarded-For can contain multiple IPs, take the first one
+            const ips = forwardedFor.split(',').map(ip => ip.trim());
+            if (ips.length > 0 && ips[0]) {
+                return ips[0];
+            }
+        }
+
         return (
             req.ip ||
             req.connection.remoteAddress ||
@@ -653,6 +689,25 @@ export class URLRedirectService {
             (req.connection as any)?.socket?.remoteAddress ||
             "unknown"
         )
+    }
+
+    /**
+     * Check if IP is private/local
+     */
+    private isPrivateIP(ip: string): boolean {
+        const cleanIP = ip.replace(/^::ffff:/, "")
+
+        if (cleanIP === "127.0.0.1" || cleanIP === "::1" || cleanIP === "localhost" || cleanIP === "unknown") {
+            return true
+        }
+
+        const parts = cleanIP.split(".")
+        if (parts.length !== 4) return false
+
+        const first = parseInt(parts[0])
+        const second = parseInt(parts[1])
+
+        return first === 10 || (first === 172 && second >= 16 && second <= 31) || (first === 192 && second === 168)
     }
 
     /**

@@ -5,6 +5,7 @@ export interface GeoIPData {
     country_code: string | null
     country_name: string | null
     region: string | null
+    region_code: string | null  // State code for India (e.g., "MH", "DL")
     city: string | null
     latitude: number | null
     longitude: number | null
@@ -169,6 +170,7 @@ class GeoIPService {
                     country_code: response.data.countryCode || null,
                     country_name: response.data.country || null,
                     region: response.data.regionName || null,
+                    region_code: response.data.region || null,  // ISO 3166-2 region code
                     city: response.data.city || null,
                     latitude: response.data.lat || null,
                     longitude: response.data.lon || null
@@ -289,6 +291,7 @@ class GeoIPService {
             country_code: null,
             country_name: null,
             region: null,
+            region_code: null,
             city: null,
             latitude: null,
             longitude: null
