@@ -156,7 +156,7 @@ class DirectAnalyticsService {
                 const eventId = uuidv4()
 
                 placeholders.push(
-                    `($${paramIndex++}, $${paramIndex++}, $${paramIndex++}, $${paramIndex++}, $${paramIndex++}, $${paramIndex++}, $${paramIndex++}, $${paramIndex++}, $${paramIndex++}, $${paramIndex++}, $${paramIndex++}, $${paramIndex++})`
+                    `($${paramIndex++}, $${paramIndex++}, $${paramIndex++}, $${paramIndex++}, $${paramIndex++}, $${paramIndex++}, $${paramIndex++}, $${paramIndex++}, $${paramIndex++}, $${paramIndex++}, $${paramIndex++}, $${paramIndex++}, $${paramIndex++})`
                 )
 
                 values.push(
@@ -168,6 +168,7 @@ class DirectAnalyticsService {
                     event.referrer,
                     event.country_code,
                     event.region,
+                    event.region_code,
                     event.city,
                     event.device_type,
                     event.browser,
@@ -178,7 +179,7 @@ class DirectAnalyticsService {
             const insertQuery = `
                 INSERT INTO analytics_events (
                     event_id, short_code, clicked_at, ip_address, user_agent, 
-                    referrer, country_code, region, city, device_type, browser, os
+                    referrer, country_code, region, region_code, city, device_type, browser, os
                 ) VALUES ${placeholders.join(", ")}
             `
 

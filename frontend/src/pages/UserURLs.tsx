@@ -426,7 +426,7 @@ const UserURLs: React.FC = () => {
                             </div>
 
                             {/* Action Buttons */}
-                            <div className="flex flex-row gap-2 sm:gap-3 justify-end sm:pt-0">
+                            <div className="flex flex-row gap-2 sm:gap-3 justify-end sm:pt-0 mx-3">
                                 <Button
                                     type="button"
                                     variant="ghost"
@@ -460,7 +460,7 @@ const UserURLs: React.FC = () => {
                     </div>
 
                     {/* Main Content */}
-                    <div className="backdrop-blur-sm rounded-lg sm:rounded-xl shadow-sm p-3 sm:p-4 lg:p-6">
+                    <div className="backdrop-blur-sm rounded-lg sm:rounded-xl shadow-sm p-3 sm:p-4 lg:p-6 mt-3">
                         {/* Selection Controls */}
                         {allUrls.length > 0 && (
                             <div className="mb-4 flex items-center justify-between p-3 bg-gradient-to-r from-blue-50 to-indigo-50 dark:from-blue-900/20 dark:to-indigo-900/20 rounded-lg border border-blue-200 dark:border-blue-800">

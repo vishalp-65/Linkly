@@ -8,6 +8,7 @@ export interface AnalyticsData {
     uniqueVisitors: number
     clicksByDay: { date: string; clicks: number }[]
     topCountries: { country: string; clicks: number }[]
+    topIndianStates?: { state: string; stateCode: string; clicks: number }[]
     topReferrers: { referrer: string; clicks: number }[]
     deviceBreakdown: { device: string; clicks: number }[]
     browserBreakdown: { browser: string; clicks: number }[]
@@ -153,6 +154,7 @@ export class AnalyticsRepository {
             const [
                 clicksByDayResult,
                 topCountriesResult,
+                topIndianStatesResult,
                 topReferrersResult,
                 deviceBreakdownResult,
                 browserBreakdownResult,
@@ -171,6 +173,12 @@ export class AnalyticsRepository {
                     dateFromStr,
                     dateToStr,
                     hasSummaries
+                ),
+                this.getTopIndianStates(
+                    client,
+                    shortCode,
+                    dateFromStr,
+                    dateToStr
                 ),
                 this.getTopReferrers(
                     client,
@@ -208,6 +216,7 @@ export class AnalyticsRepository {
                 uniqueVisitors: parseInt(stats.unique_visitors) || 0,
                 clicksByDay: clicksByDayResult,
                 topCountries: topCountriesResult,
+                topIndianStates: topIndianStatesResult.length > 0 ? topIndianStatesResult : undefined,
                 topReferrers: topReferrersResult,
                 deviceBreakdown: deviceBreakdownResult,
                 browserBreakdown: browserBreakdownResult,
@@ -770,6 +779,37 @@ export class AnalyticsRepository {
                 clicks: parseInt(row.clicks) || 0
             }))
         }
+    }
+
+    private async getTopIndianStates(
+        client: any,
+        shortCode: string,
+        dateFromStr: string,
+        dateToStr: string
+    ) {
+        const result = await client.query(
+            `
+            SELECT 
+                region_code as state_code,
+                region as state_name,
+                COUNT(*) as clicks
+            FROM analytics_events 
+            WHERE short_code = $1 
+              AND clicked_at >= $2::timestamp 
+              AND clicked_at <= ($3::timestamp + INTERVAL '1 day')
+              AND country_code = 'IN'
+              AND region_code IS NOT NULL
+            GROUP BY region_code, region
+            ORDER BY clicks DESC
+            LIMIT 10
+        `,
+            [shortCode, dateFromStr, dateToStr]
+        )
+        return result.rows.map((row: any) => ({
+            stateCode: row.state_code,
+            state: row.state_name || row.state_code,
+            clicks: parseInt(row.clicks) || 0
+        }))
     }
 
     private async getTopReferrers(

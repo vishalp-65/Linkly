@@ -182,12 +182,12 @@ const DatePicker: React.FC<DatePickerProps> = ({
             </div>
 
             {isOpen && (
-                <div className="absolute z-10 mt-1 bg-white rounded-lg shadow-lg ring-1 ring-black ring-opacity-5 p-4 min-w-[280px]">
+                <div className="absolute z-[100] mt-1 bg-white dark:bg-gray-800 rounded-lg shadow-lg ring-1 ring-black ring-opacity-5 p-4 min-w-[280px]">
                     {/* Calendar Header */}
                     <div className="flex items-center justify-between mb-4">
                         <button
                             type="button"
-                            className="p-1 hover:bg-gray-100 rounded-md"
+                            className="p-1 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-md text-gray-700 dark:text-gray-300"
                             onClick={() => navigateMonth('prev')}
                         >
                             <svg className="h-5 w-5" fill="none" viewBox="0 0 24 24" strokeWidth="1.5" stroke="currentColor">
@@ -195,13 +195,13 @@ const DatePicker: React.FC<DatePickerProps> = ({
                             </svg>
                         </button>
 
-                        <h3 className="text-lg font-semibold text-gray-900">
+                        <h3 className="text-lg font-semibold text-gray-900 dark:text-white">
                             {monthNames[currentMonth.getMonth()]} {currentMonth.getFullYear()}
                         </h3>
 
                         <button
                             type="button"
-                            className="p-1 hover:bg-gray-100 rounded-md"
+                            className="p-1 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-md text-gray-700 dark:text-gray-300"
                             onClick={() => navigateMonth('next')}
                         >
                             <svg className="h-5 w-5" fill="none" viewBox="0 0 24 24" strokeWidth="1.5" stroke="currentColor">
@@ -213,7 +213,7 @@ const DatePicker: React.FC<DatePickerProps> = ({
                     {/* Day Names */}
                     <div className="grid grid-cols-7 gap-1 mb-2">
                         {dayNames.map(day => (
-                            <div key={day} className="text-center text-sm font-medium text-gray-500 py-2">
+                            <div key={day} className="text-center text-sm font-medium text-gray-500 dark:text-gray-400 py-2">
                                 {day}
                             </div>
                         ))}
@@ -240,14 +240,14 @@ const DatePicker: React.FC<DatePickerProps> = ({
                                     className={`
                     w-8 h-8 text-sm rounded-md transition-colors
                     ${!isCurrentMonth
-                                            ? 'text-gray-300 hover:text-gray-400'
+                                            ? 'text-gray-300 dark:text-gray-600 hover:text-gray-400 dark:hover:text-gray-500'
                                             : isSelected
                                                 ? 'bg-blue-600 text-white'
                                                 : isToday
-                                                    ? 'bg-blue-100 text-blue-600 hover:bg-blue-200'
+                                                    ? 'bg-blue-100 dark:bg-blue-900/30 text-blue-600 dark:text-blue-400 hover:bg-blue-200 dark:hover:bg-blue-900/50'
                                                     : isDisabled
-                                                        ? 'text-gray-300 cursor-not-allowed'
-                                                        : 'text-gray-900 hover:bg-gray-100'
+                                                        ? 'text-gray-300 dark:text-gray-600 cursor-not-allowed'
+                                                        : 'text-gray-900 dark:text-gray-100 hover:bg-gray-100 dark:hover:bg-gray-700'
                                         }
                   `}
                                     onClick={() => !isDisabled && handleDateSelect(date)}

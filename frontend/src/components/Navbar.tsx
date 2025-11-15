@@ -164,7 +164,7 @@ const Navbar: React.FC = () => {
                             {/* Guest User - Show Login/Signup */}
                             {isGuest && (
                                 <>
-                                    <ThemeToggle size="md" iconClass='w-5 h-5' />
+                                    <ThemeToggle iconClass='w-5 h-5' />
                                     <Link
                                         to="/login"
                                         className="px-4 py-2 text-sm font-medium text-gray-700 dark:text-gray-300 hover:text-gray-900 dark:hover:text-white transition-colors"
@@ -215,8 +215,7 @@ const Navbar: React.FC = () => {
                                             <div onClick={() => setShowUserMenu(false)} className="py-1">
                                                 <ThemeToggle
                                                     showLabel
-                                                    size="md"
-                                                    className="flex items-center gap-3 w-full justify-start px-4 py-2.5
+                                                    className="flex items-center gap-3 w-full justify-start text-sm px-4 py-2.5
                                                             text-gray-700 dark:text-gray-300 rounded-none 
                                                             hover:bg-gray-200 dark:hover:bg-gray-700 transition-colors 
                                                             focus:outline-none focus:ring-transparent focus:ring-offset-0"
@@ -256,7 +255,7 @@ const Navbar: React.FC = () => {
 
                         {/* --- Mobile menu button --- */}
                         <div className="md:hidden flex items-center space-x-2">
-                            {isGuest && <ThemeToggle size="md" iconClass='w-5 h-5' />}
+                            {isGuest && <ThemeToggle iconClass='w-5 h-5' />}
                             <button
                                 ref={mobileMenuButtonRef}
                                 onClick={() => setShowMobileMenu(!showMobileMenu)}
@@ -372,11 +371,11 @@ const Navbar: React.FC = () => {
                                         <div onClick={() => setShowMobileMenu(false)}>
                                             <ThemeToggle
                                                 showLabel
-                                                size="md"
-                                                className="w-full justify-start px-4 py-3
-                                            text-gray-700 dark:text-gray-300 
-                                            hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors 
-                                            focus:outline-none focus:ring-transparent focus:ring-offset-0 rounded-lg"
+                                                iconClass='w-5 h-5'
+                                                className="flex items-center gap-3 w-full justify-start text-base font-medium px-4 py-2.5
+                                                            text-gray-700 dark:text-gray-300 rounded-none 
+                                                            hover:bg-gray-200 dark:hover:bg-gray-700 transition-colors 
+                                                            focus:outline-none focus:ring-transparent focus:ring-offset-0"
                                             />
                                         </div>
 

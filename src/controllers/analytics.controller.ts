@@ -137,6 +137,7 @@ export class AnalyticsController {
                 uniqueVisitors: analyticsData.uniqueVisitors,
                 clicksByDate: analyticsData.clicksByDay,
                 clicksByCountry: analyticsData.topCountries,
+                clicksByIndianState: analyticsData.topIndianStates,
                 clicksByDevice: analyticsData.deviceBreakdown,
                 clicksByReferrer: analyticsData.topReferrers
             }

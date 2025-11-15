@@ -14,6 +14,7 @@ import { ResourcePreloader } from './utils/preloader';
 import { ServiceWorkerManager } from './utils/serviceWorker';
 import { useKeyboardDetection } from './hooks/useKeyboardNavigation';
 import '@fortawesome/fontawesome-free/css/all.min.css';
+import { Analytics } from "@vercel/analytics/react"
 
 // Lazy load page components
 const HomePage = React.lazy(() => import('./pages/HomePage'));
@@ -264,6 +265,7 @@ function App() {
                   </Routes>
                 </Suspense>
               </div>
+              <Analytics />
             </Router>
           </ToastProvider>
         </AuthProvider>
