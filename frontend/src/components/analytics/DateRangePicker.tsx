@@ -70,8 +70,8 @@ const DateRangePicker: React.FC<DateRangePickerProps> = ({ value, onChange, clas
                 onClick={() => !disabled && setIsOpen(!isOpen)}
                 disabled={disabled}
                 className={`flex items-center justify-between w-full px-4 py-2.5 text-sm bg-white dark:bg-gray-800 border rounded-lg shadow-sm transition-all duration-200 ${disabled
-                        ? 'cursor-not-allowed bg-gray-50 dark:bg-gray-900 text-gray-400 dark:text-gray-600 border-gray-200 dark:border-gray-700'
-                        : 'hover:bg-gray-50 dark:hover:bg-gray-700 focus:outline-none focus:ring-2 focus:ring-blue-500 dark:focus:ring-blue-600 focus:border-transparent border-gray-300 dark:border-gray-600'
+                    ? 'cursor-not-allowed bg-gray-50 dark:bg-gray-900 text-gray-400 dark:text-gray-600 border-gray-200 dark:border-gray-700'
+                    : 'hover:bg-gray-50 dark:hover:bg-gray-700 focus:outline-none focus:ring-2 focus:ring-blue-500 dark:focus:ring-blue-600 focus:border-transparent border-gray-300 dark:border-gray-600'
                     } ${!isValidRange ? 'border-red-300 dark:border-red-700' : ''}`}
             >
                 <div className="flex items-center gap-2.5">
@@ -88,8 +88,8 @@ const DateRangePicker: React.FC<DateRangePickerProps> = ({ value, onChange, clas
             </button>
 
             {isOpen && (
-                <div className="absolute z-50 mt-2 w-full sm:w-96 bg-white dark:bg-gray-800 rounded-xl shadow-2xl dark:shadow-gray-900/50 border border-gray-200 dark:border-gray-700 overflow-hidden animate-scale-in">
-                    <div className="p-5">
+                <div className="absolute z-50 mt-2 w-full sm:w-96 bg-white overflow-x-scroll dark:bg-gray-800 rounded-xl shadow-2xl dark:shadow-gray-900/50 border border-gray-200 dark:border-gray-700 animate-scale-in">
+                    <div className="px-5 py-7">
                         {/* Header */}
                         <div className="mb-4">
                             <h4 className="text-sm font-semibold text-gray-900 dark:text-white mb-1">Select Date Range</h4>
@@ -107,9 +107,9 @@ const DateRangePicker: React.FC<DateRangePickerProps> = ({ value, onChange, clas
                                         key={preset.key}
                                         type="button"
                                         onClick={() => handlePresetSelect(preset)}
-                                        className={`px-3 py-2.5 text-sm rounded-lg text-left transition-all duration-200 ${selectedPreset === preset.key
-                                                ? 'bg-gradient-to-r from-blue-600 to-indigo-600 text-white shadow-md transform scale-[1.02]'
-                                                : 'bg-gray-50 dark:bg-gray-700/50 text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700 border border-transparent hover:border-gray-300 dark:hover:border-gray-600'
+                                        className={`px-3 py-2.5 text-sm rounded-lg cursor-pointer text-left transition-all duration-200 ${selectedPreset === preset.key
+                                            ? 'bg-gradient-to-r from-blue-600 to-indigo-600 text-white shadow-md transform scale-[1.02]'
+                                            : 'bg-gray-50 dark:bg-gray-700/50 text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700 border border-transparent hover:border-gray-300 dark:hover:border-gray-600'
                                             }`}
                                     >
                                         {preset.label}
@@ -156,7 +156,7 @@ const DateRangePicker: React.FC<DateRangePickerProps> = ({ value, onChange, clas
                             <button
                                 type="button"
                                 onClick={() => setIsOpen(false)}
-                                className="px-4 py-2 text-sm font-medium text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-lg transition-colors"
+                                className="px-4 py-2 text-sm font-medium cursor-pointer text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-lg transition-colors"
                             >
                                 Cancel
                             </button>
@@ -164,9 +164,9 @@ const DateRangePicker: React.FC<DateRangePickerProps> = ({ value, onChange, clas
                                 type="button"
                                 onClick={() => setIsOpen(false)}
                                 disabled={!isValidRange}
-                                className={`px-4 py-2 text-sm font-medium rounded-lg transition-all duration-200 ${isValidRange
-                                        ? 'bg-gradient-to-r from-blue-600 to-indigo-600 text-white hover:from-blue-700 hover:to-indigo-700 shadow-md hover:shadow-lg active:scale-95'
-                                        : 'bg-gray-200 dark:bg-gray-700 text-gray-400 dark:text-gray-600 cursor-not-allowed'
+                                className={`px-4 py-2 text-sm font-medium cursor-pointer rounded-lg transition-all duration-200 ${isValidRange
+                                    ? 'bg-gradient-to-r from-blue-600 to-indigo-600 text-white hover:from-blue-700 hover:to-indigo-700 shadow-md hover:shadow-lg active:scale-95'
+                                    : 'bg-gray-200 dark:bg-gray-700 text-gray-400 dark:text-gray-600 cursor-not-allowed'
                                     }`}
                             >
                                 Apply
