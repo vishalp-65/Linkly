@@ -3,7 +3,6 @@ import { Link, useSearchParams, useNavigate } from 'react-router-dom';
 import { useConfirmPasswordResetMutation } from '../services/api';
 import { Button } from '../components/common';
 import Input from '../components/common/Input';
-import Card from '../components/common/Card';
 import { useToast } from '../contexts/ToastContext';
 
 interface FormData {
@@ -97,7 +96,7 @@ const ResetPasswordPage: React.FC = () => {
         return (
             <div className="min-h-screen bg-gradient-to-br from-gray-50 via-blue-50 to-indigo-100 dark:from-gray-900 dark:via-gray-800 dark:to-gray-900 flex items-center justify-center px-4">
                 <div className="max-w-md w-full">
-                    <Card padding="lg" className="dark:bg-gray-800 dark:border-gray-700 text-center">
+                    <div className="p-8 text-center">
                         <div className="w-16 h-16 bg-gradient-to-br from-green-100 to-emerald-100 dark:from-green-900 dark:to-emerald-900 rounded-2xl flex items-center justify-center mx-auto mb-6 shadow-lg">
                             <svg className="w-8 h-8 text-green-600 dark:text-green-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
@@ -115,7 +114,7 @@ const ResetPasswordPage: React.FC = () => {
                         >
                             Sign In Now
                         </Link>
-                    </Card>
+                    </div>
                 </div>
             </div>
         );
@@ -124,7 +123,7 @@ const ResetPasswordPage: React.FC = () => {
     return (
         <div className="min-h-screen bg-gradient-to-br from-gray-50 via-blue-50 to-indigo-100 dark:from-gray-900 dark:via-gray-800 dark:to-gray-900 flex items-center justify-center px-4">
             <div className="max-w-md w-full">
-                <Card padding="lg" className="dark:bg-gray-800 dark:border-gray-700">
+                <div className="p-8">
                     <div className="text-center mb-8">
                         <div className="w-16 h-16 bg-gradient-to-br from-blue-500 to-purple-600 rounded-2xl flex items-center justify-center mx-auto mb-4 shadow-lg">
                             <svg className="w-8 h-8 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -178,7 +177,7 @@ const ResetPasswordPage: React.FC = () => {
                         </Button>
                     </form>
 
-                    <div className="mt-8 pt-6 border-t border-gray-200 dark:border-gray-700 text-center">
+                    <div className="mt-8 pt-6 text-sm border-t border-gray-200 dark:border-gray-700 text-center">
                         <p className="text-gray-600 dark:text-gray-400">
                             Remember your password?{' '}
                             <Link
@@ -189,9 +188,9 @@ const ResetPasswordPage: React.FC = () => {
                             </Link>
                         </p>
                     </div>
-                </Card>
+                </div>
 
-                <div className="text-center mt-6">
+                {/* <div className="text-center mt-6">
                     <Link
                         to="/"
                         className="inline-flex items-center text-gray-600 dark:text-gray-400 hover:text-gray-800 dark:hover:text-gray-200 transition-colors"
@@ -201,7 +200,7 @@ const ResetPasswordPage: React.FC = () => {
                         </svg>
                         Back to Home
                     </Link>
-                </div>
+                </div> */}
             </div>
         </div>
     );

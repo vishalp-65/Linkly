@@ -47,7 +47,6 @@ const DEFAULT_PARAMS: URLListParams = {
     sortOrder: 'desc',
 };
 
-const POLLING_INTERVAL = 30000;
 const DEBOUNCE_DELAY = 500;
 const MAX_PAGE_NUMBERS = 7;
 
@@ -245,7 +244,6 @@ const URLList: React.FC<URLListProps> = ({
     const [searchInput, setSearchInput] = useState('');
 
     const { data, isLoading, error, isFetching } = useGetUserUrlsQuery(params, {
-        pollingInterval: POLLING_INTERVAL,
         refetchOnMountOrArgChange: true,
     });
 

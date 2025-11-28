@@ -7,11 +7,12 @@ import type { URLItem } from '../types/url.types';
 import { Button, Modal } from '../components/common';
 import PageHeader from '../components/common/PageHeader';
 import URLResult, { type URLResultData } from '../components/URLResult';
+import URLEditModal from '../components/URLEditModal';
 import { useToast } from '../contexts/ToastContext';
 import { useGetUserUrlsQuery, useBulkDeleteUrlsMutation, useBulkUpdateExpiryMutation } from '../services/api';
 import { exportToCSV, exportToJSON, isExpired } from '../utils/exportUtils';
 
-type ModalType = 'share' | 'export' | 'bulkActions' | null;
+type ModalType = 'share' | 'export' | 'bulkActions' | 'edit' | null;
 type ExportFormat = 'csv' | 'json';
 
 interface ExportOptions {
@@ -134,9 +135,12 @@ const BulkActionButton = React.memo<{
     const borderColor = variant === 'danger'
         ? 'border-red-200 dark:border-red-900/30'
         : 'border-gray-200 dark:border-gray-700';
+    const bgColor = variant === 'danger'
+        ? 'bg-red-200/60 dark:bg-red-900/20'
+        : 'bg-gray-200/90 dark:bg-gray-900/40';
     const hoverBg = variant === 'danger'
         ? 'hover:bg-red-50 dark:hover:bg-red-900/10'
-        : 'hover:bg-gray-50 dark:hover:bg-gray-700/50';
+        : 'hover:bg-gray-100 dark:hover:bg-gray-800/50';
     const iconColor = variant === 'danger'
         ? 'text-red-600 dark:text-red-400'
         : 'text-blue-600 dark:text-blue-400';
@@ -149,7 +153,7 @@ const BulkActionButton = React.memo<{
             type="button"
             onClick={onClick}
             disabled={disabled}
-            className={`w-full p-4 rounded-lg border ${borderColor} ${hoverBg} transition-all cursor-pointer group text-left disabled:opacity-50 disabled:cursor-not-allowed`}
+            className={`w-full p-4 rounded-lg border ${borderColor} ${hoverBg} ${bgColor} transition-all cursor-pointer group text-left disabled:opacity-50 disabled:cursor-not-allowed`}
         >
             <div className="flex items-start gap-3">
                 <div className={`flex-shrink-0 mt-0.5 ${iconColor}`}>
@@ -181,6 +185,7 @@ const UserURLs: React.FC = () => {
     const [selectedUrls, setSelectedUrls] = useState<Set<string>>(new Set());
     const [exportFormat, setExportFormat] = useState<ExportFormat>('csv');
     const [exportOptions, setExportOptions] = useState<ExportOptions>(INITIAL_EXPORT_OPTIONS);
+    const [editingUrl, setEditingUrl] = useState<URLItem | null>(null);
 
     // API hooks
     const [bulkDeleteUrls, { isLoading: isDeleting }] = useBulkDeleteUrlsMutation();
@@ -202,13 +207,10 @@ const UserURLs: React.FC = () => {
         navigate(`/analytics/${url.short_code}`);
     }, [navigate]);
 
-    const handleEditClick = useCallback(() => {
-        showToast({
-            type: 'info',
-            title: 'Coming Soon',
-            message: 'Edit functionality will be available soon!'
-        });
-    }, [showToast]);
+    const handleEditClick = useCallback((url: URLItem) => {
+        setEditingUrl(url);
+        setActiveModal('edit');
+    }, []);
 
     const handleShareClick = useCallback((url: URLItem) => {
         setUrlResult({
@@ -239,6 +241,7 @@ const UserURLs: React.FC = () => {
 
     const handleCloseModal = useCallback(() => {
         setActiveModal(null);
+        setEditingUrl(null);
     }, []);
 
     // Export functionality
@@ -533,6 +536,15 @@ const UserURLs: React.FC = () => {
                             closeOnOverlayClick: true,
                             title: "Share it on anywhere"
                         }}
+                    />
+                )}
+
+                {/* Edit Modal */}
+                {editingUrl && activeModal === 'edit' && (
+                    <URLEditModal
+                        isOpen={true}
+                        onClose={handleCloseModal}
+                        url={editingUrl}
                     />
                 )}
 

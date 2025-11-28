@@ -29,6 +29,32 @@ export const urlValidators = {
             })
     }),
 
+    updateUrl: Joi.object({
+        longUrl: Joi.string()
+            .uri({ scheme: ["http", "https"] })
+            .max(2048)
+            .optional()
+            .messages({
+                "string.uri": "URL must be a valid HTTP or HTTPS URL",
+                "string.max": "URL cannot exceed 2048 characters"
+            }),
+        customAlias: Joi.string()
+            .pattern(/^[a-zA-Z0-9_-]{3,30}$/)
+            .optional()
+            .messages({
+                "string.pattern.base":
+                    "Custom alias must be 3-30 characters long and contain only letters, numbers, hyphens, and underscores"
+            }),
+        expiryDate: Joi.date()
+            .iso()
+            .min('now')
+            .optional()
+            .allow(null)
+            .messages({
+                "date.min": "Expiry date must be in the future"
+            })
+    }).min(1),
+
     shortCode: Joi.object({
         shortCode: Joi.string()
             .pattern(/^[a-zA-Z0-9_-]{3,30}$/)

@@ -1,4 +1,5 @@
 import React, { useEffect, useState, useRef } from 'react';
+import { LoadingFallback } from './common';
 
 interface BackendHealthCheckProps {
     children: React.ReactNode;
@@ -32,8 +33,8 @@ const BackendHealthCheck: React.FC<BackendHealthCheckProps> = ({ children }) => 
 
     const HEALTH_ENDPOINT = getHealthEndpoint();
     const MAX_ATTEMPTS = 30;
-    const HEALTH_CHECK_INTERVAL = 3000;
-    const INITIAL_DELAY = 2000;
+    const HEALTH_CHECK_INTERVAL = 2000;
+    const INITIAL_DELAY = 500;
 
     const logMessages = [
         { message: 'INCOMING HTTP REQUEST DETECTED ...', type: 'info' as const, delay: 0 },
@@ -199,7 +200,7 @@ const BackendHealthCheck: React.FC<BackendHealthCheckProps> = ({ children }) => 
 
     // Don't render anything until initial check is complete
     if (isBackendReady === null) {
-        return null;
+        return <LoadingFallback fullScreen />;
     }
 
     // If backend is ready, render children immediately
@@ -258,7 +259,7 @@ const BackendHealthCheck: React.FC<BackendHealthCheckProps> = ({ children }) => 
                                 }`}
                         >
                             <span className="text-gray-500">{log.timestamp}</span>
-                            <span className="ml-3">{log.message}</span>
+                            <span className="ml-3 text-sm">{log.message}</span>
                         </div>
                     ))}
 

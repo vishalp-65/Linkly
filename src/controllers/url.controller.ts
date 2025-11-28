@@ -807,4 +807,182 @@ export class UrlController {
             next(error)
         }
     }
+
+    updateUrl = async (
+        req: Request,
+        res: Response,
+        next: NextFunction
+    ): Promise<void> => {
+        const startTime = Date.now()
+        const { shortCode } = req.params
+        const { longUrl, customAlias, expiryDate } = req.body
+        const userId = this.getUserId(req)
+
+        try {
+            if (!userId) {
+                throw ApiError.unauthorized(
+                    "Authentication is required to update URLs"
+                )
+            }
+
+            if (!shortCode) {
+                throw ApiError.badRequest(
+                    "Short code is required",
+                    "MISSING_SHORT_CODE"
+                )
+            }
+
+            // Validate at least one field is being updated
+            if (!longUrl && !customAlias && expiryDate === undefined) {
+                throw ApiError.badRequest(
+                    "At least one field must be provided for update",
+                    "NO_UPDATE_FIELDS"
+                )
+            }
+
+            // Get existing URL mapping
+            const urlMapping = await this.urlRepository.findById(shortCode)
+
+            if (!urlMapping || urlMapping.is_deleted) {
+                throw ApiError.notFound(
+                    "The specified short URL does not exist",
+                    "URL_NOT_FOUND"
+                )
+            }
+
+            if (urlMapping.user_id !== userId) {
+                logger.warn("Unauthorized URL update attempt", {
+                    shortCode,
+                    requestingUserId: userId,
+                    ownerUserId: urlMapping.user_id,
+                    ip: req.ip
+                })
+                throw ApiError.forbidden(
+                    "You do not have permission to update this URL"
+                )
+            }
+
+            // Prepare updates
+            const updates: any = {}
+
+            // Update destination URL
+            if (longUrl) {
+                const validation = await this.urlShortenerService.validateUrl(longUrl)
+                if (!validation.isValid) {
+                    throw ApiError.badRequest(
+                        validation.error || "Invalid URL format",
+                        "INVALID_URL"
+                    )
+                }
+                updates.long_url = validation.sanitizedUrl
+                updates.long_url_hash = this.generateUrlHash(validation.sanitizedUrl!)
+            }
+
+            // Update custom alias (short code)
+            if (customAlias && customAlias !== shortCode) {
+                // Check if new alias is available
+                const availability = await this.urlShortenerService.isAliasAvailable(customAlias)
+                if (!availability.isAvailable) {
+                    const error = ApiError.conflict(
+                        "Custom alias is already taken",
+                        "ALIAS_TAKEN"
+                    )
+                    error.details = { suggestions: availability.suggestions }
+                    throw error
+                }
+                updates.new_short_code = customAlias
+            }
+
+            // Update expiry date
+            if (expiryDate !== undefined) {
+                updates.expires_at = expiryDate ? new Date(expiryDate) : null
+            }
+
+            // Perform update
+            const updatedUrl = await this.urlRepository.updateUrl(shortCode, updates)
+
+            if (!updatedUrl) {
+                throw ApiError.internal("Failed to update the URL")
+            }
+
+            // Clear cache for old short code from all cache layers
+            try {
+                // Invalidate from URLCacheService (Redis)
+                await this.cacheService.removeCachedUrlMapping(shortCode)
+
+                // Also invalidate from multi-layer cache (memory + Redis)
+                const { MultiLayerCacheService } = await import('../services/multiLayerCacheService')
+                const multiLayerCache = new MultiLayerCacheService()
+                await multiLayerCache.invalidateCache(shortCode)
+
+                logger.info('Cache invalidated for updated URL', { shortCode })
+            } catch (cacheError) {
+                logger.warn('Failed to invalidate cache', {
+                    shortCode,
+                    error: cacheError instanceof Error ? cacheError.message : 'Unknown error'
+                })
+            }
+
+            // If short code changed, also clear cache for new short code
+            if (updates.new_short_code) {
+                try {
+                    // Invalidate from URLCacheService (Redis)
+                    await this.cacheService.removeCachedUrlMapping(updates.new_short_code)
+
+                    // Also invalidate from multi-layer cache (memory + Redis)
+                    const { MultiLayerCacheService } = await import('../services/multiLayerCacheService')
+                    const multiLayerCache = new MultiLayerCacheService()
+                    await multiLayerCache.invalidateCache(updates.new_short_code)
+
+                    logger.info('Cache invalidated for new short code', {
+                        newShortCode: updates.new_short_code
+                    })
+                } catch (cacheError) {
+                    logger.warn('Failed to invalidate cache for new short code', {
+                        newShortCode: updates.new_short_code,
+                        error: cacheError instanceof Error ? cacheError.message : 'Unknown error'
+                    })
+                }
+            }
+
+            const responseTime = Date.now() - startTime
+
+            logger.info("URL updated successfully", {
+                oldShortCode: shortCode,
+                newShortCode: updates.new_short_code || shortCode,
+                userId,
+                updatedFields: Object.keys(updates),
+                responseTime
+            })
+
+            ApiResponse.success(
+                res,
+                {
+                    short_code: updatedUrl.short_code,
+                    long_url: updatedUrl.long_url,
+                    expires_at: updatedUrl.expires_at,
+                    is_custom_alias: updatedUrl.is_custom_alias,
+                    created_at: updatedUrl.created_at
+                },
+                200,
+                { responseTime }
+            )
+        } catch (error) {
+            const responseTime = Date.now() - startTime
+
+            logger.error("Failed to update URL", {
+                shortCode,
+                userId,
+                error: error instanceof Error ? error.message : "Unknown error",
+                responseTime
+            })
+
+            next(error)
+        }
+    }
+
+    private generateUrlHash(url: string): string {
+        const crypto = require('crypto')
+        return crypto.createHash("sha256").update(url).digest("hex")
+    }
 }

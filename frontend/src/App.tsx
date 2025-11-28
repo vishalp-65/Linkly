@@ -105,45 +105,57 @@ function App() {
                     <Route
                       path="/login"
                       element={
-                        <Suspense
-                          fallback={
-                            <LoadingFallback message="Loading login..." />
-                          }
-                        >
-                          <LoginPage />
-                        </Suspense>
+                        <>
+                          <Navbar />
+                          <Suspense
+                            fallback={
+                              <LoadingFallback message="Loading login..." />
+                            }
+                          >
+                            <LoginPage />
+                          </Suspense>
+                        </>
                       }
                     />
                     <Route
                       path="/register"
                       element={
-                        <Suspense
-                          fallback={
-                            <LoadingFallback message="Loading registration..." />
-                          }
-                        >
-                          <RegisterPage />
-                        </Suspense>
+                        <>
+                          <Navbar />
+                          <Suspense
+                            fallback={
+                              <LoadingFallback message="Loading registration..." />
+                            }
+                          >
+                            <RegisterPage />
+                          </Suspense>
+                        </>
                       }
                     />
                     <Route
                       path="/forgot-password"
                       element={
-                        <Suspense
-                          fallback={<LoadingFallback message="Loading..." />}
-                        >
-                          <ForgotPasswordPage />
-                        </Suspense>
+                        <>
+                          <Navbar />
+                          <Suspense
+                            fallback={<LoadingFallback message="Loading..." />}
+                          >
+                            <ForgotPasswordPage />
+                          </Suspense>
+                        </>
                       }
                     />
                     <Route
                       path="/reset-password"
                       element={
-                        <Suspense
-                          fallback={<LoadingFallback message="Loading..." />}
-                        >
-                          <ResetPasswordPage />
-                        </Suspense>
+                        <>
+                          <Navbar />
+                          <Suspense
+                            fallback={<LoadingFallback message="Loading..." />}
+                          >
+                            <ResetPasswordPage />
+                          </Suspense>
+                        </>
                       }
                     />
 

@@ -814,4 +814,90 @@ export class URLRepository
             throw this.handleDatabaseError(error);
         }
     }
+
+    /**
+     * Update URL mapping (destination, custom alias, expiry)
+     */
+    async updateUrl(
+        oldShortCode: string,
+        updates: {
+            long_url?: string;
+            long_url_hash?: string;
+            new_short_code?: string;
+            expires_at?: Date | null;
+        }
+    ): Promise<URLMapping | null> {
+        try {
+            const existing = await this.findById(oldShortCode);
+            if (!existing) {
+                throw new NotFoundError("URL mapping", oldShortCode);
+            }
+
+            // If changing short code, create new entry and delete old one
+            if (updates.new_short_code && updates.new_short_code !== oldShortCode) {
+                // Create new URL mapping with updated short code
+                const newMapping = await this.create({
+                    short_code: updates.new_short_code,
+                    long_url: updates.long_url || existing.long_url,
+                    long_url_hash: updates.long_url_hash || existing.long_url_hash,
+                    user_id: existing.user_id || undefined,
+                    expires_at: updates.expires_at !== undefined ? (updates.expires_at || undefined) : (existing.expires_at || undefined),
+                    is_custom_alias: true
+                });
+
+                // Soft delete old mapping
+                await this.delete(oldShortCode);
+
+                logger.info('URL mapping updated with new short code', {
+                    oldShortCode,
+                    newShortCode: updates.new_short_code
+                });
+
+                return newMapping;
+            }
+
+            // Otherwise, update in place
+            const setClauses: string[] = [];
+            const params: any[] = [];
+            let paramIndex = 1;
+
+            if (updates.long_url !== undefined) {
+                setClauses.push(`long_url = $${paramIndex++}`);
+                params.push(updates.long_url);
+            }
+            if (updates.long_url_hash !== undefined) {
+                setClauses.push(`long_url_hash = $${paramIndex++}`);
+                params.push(updates.long_url_hash);
+            }
+            if (updates.expires_at !== undefined) {
+                setClauses.push(`expires_at = $${paramIndex++}`);
+                params.push(updates.expires_at);
+            }
+
+            // Add short_code to params for WHERE clause
+            params.push(oldShortCode);
+
+            const query = `
+                UPDATE url_mappings
+                SET ${setClauses.join(', ')}
+                WHERE short_code = $${paramIndex} AND NOT is_deleted
+                RETURNING *
+            `;
+
+            const result = await this.query(query, params);
+
+            logger.info('URL mapping updated', {
+                shortCode: oldShortCode,
+                updatedFields: Object.keys(updates)
+            });
+
+            return result.rows[0] || null;
+        } catch (error) {
+            logger.error('Failed to update URL mapping', {
+                shortCode: oldShortCode,
+                error: error instanceof Error ? error.message : 'Unknown error'
+            });
+            throw this.handleDatabaseError(error);
+        }
+    }
 }
