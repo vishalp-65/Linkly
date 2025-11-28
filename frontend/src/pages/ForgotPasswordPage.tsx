@@ -3,7 +3,6 @@ import { Link } from 'react-router-dom';
 import { useRequestPasswordResetMutation } from '../services/api';
 import { Button } from '../components/common';
 import Input from '../components/common/Input';
-import Card from '../components/common/Card';
 import { useToast } from '../contexts/ToastContext';
 
 const ForgotPasswordPage: React.FC = () => {
@@ -59,7 +58,7 @@ const ForgotPasswordPage: React.FC = () => {
         return (
             <div className="min-h-screen bg-gradient-to-br from-gray-50 via-blue-50 to-indigo-100 dark:from-gray-900 dark:via-gray-800 dark:to-gray-900 flex items-center justify-center px-4">
                 <div className="max-w-md w-full">
-                    <Card padding="lg" className="dark:bg-gray-800 dark:border-gray-700 text-center">
+                    <div className="p-8 text-center">
                         <div className="w-16 h-16 bg-gradient-to-br from-green-100 to-emerald-100 dark:from-green-900 dark:to-emerald-900 rounded-2xl flex items-center justify-center mx-auto mb-6 shadow-lg">
                             <svg className="w-8 h-8 text-green-600 dark:text-green-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 8l7.89 5.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z" />
@@ -90,7 +89,7 @@ const ForgotPasswordPage: React.FC = () => {
                             </Button>
                         </div>
 
-                        <div className="mt-8 pt-6 border-t border-gray-200 dark:border-gray-700">
+                        <div className="mt-8 pt-6 text-sm border-t border-gray-200 dark:border-gray-700">
                             <Link
                                 to="/login"
                                 className="text-blue-600 hover:text-blue-700 dark:text-blue-400 dark:hover:text-blue-300 font-medium"
@@ -98,7 +97,7 @@ const ForgotPasswordPage: React.FC = () => {
                                 Back to Sign In
                             </Link>
                         </div>
-                    </Card>
+                    </div>
                 </div>
             </div>
         );
@@ -107,7 +106,7 @@ const ForgotPasswordPage: React.FC = () => {
     return (
         <div className="min-h-screen bg-gradient-to-br from-gray-50 via-blue-50 to-indigo-100 dark:from-gray-900 dark:via-gray-800 dark:to-gray-900 flex items-center justify-center px-4">
             <div className="max-w-md w-full">
-                <Card padding="lg" className="dark:bg-gray-800 dark:border-gray-700">
+                <div className="p-8">
                     <div className="text-center mb-8">
                         <div className="w-16 h-16 bg-gradient-to-br from-orange-100 to-red-100 dark:from-orange-900 dark:to-red-900 rounded-2xl flex items-center justify-center mx-auto mb-4 shadow-lg">
                             <svg className="w-8 h-8 text-orange-600 dark:text-orange-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -144,7 +143,7 @@ const ForgotPasswordPage: React.FC = () => {
                         </Button>
                     </form>
 
-                    <div className="mt-8 pt-6 border-t border-gray-200 dark:border-gray-700 text-center space-y-3">
+                    <div className="mt-8 pt-6 text-sm border-t border-gray-200 dark:border-gray-700 text-center space-y-3">
                         <p className="text-gray-600 dark:text-gray-400">
                             Remember your password?{' '}
                             <Link
@@ -154,20 +153,10 @@ const ForgotPasswordPage: React.FC = () => {
                                 Sign in here
                             </Link>
                         </p>
-
-                        <p className="text-gray-600 dark:text-gray-400">
-                            Don't have an account?{' '}
-                            <Link
-                                to="/register"
-                                className="text-blue-600 hover:text-blue-700 dark:text-blue-400 dark:hover:text-blue-300 font-medium"
-                            >
-                                Sign up here
-                            </Link>
-                        </p>
                     </div>
-                </Card>
+                </div>
 
-                <div className="text-center mt-6">
+                {/* <div className="text-center mt-6">
                     <Link
                         to="/"
                         className="inline-flex items-center text-gray-600 dark:text-gray-400 hover:text-gray-800 dark:hover:text-gray-200 transition-colors"
@@ -177,7 +166,7 @@ const ForgotPasswordPage: React.FC = () => {
                         </svg>
                         Back to Home
                     </Link>
-                </div>
+                </div> */}
             </div>
         </div>
     );

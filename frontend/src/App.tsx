@@ -14,6 +14,7 @@ import { ResourcePreloader } from './utils/preloader';
 import { ServiceWorkerManager } from './utils/serviceWorker';
 import { useKeyboardDetection } from './hooks/useKeyboardNavigation';
 import '@fortawesome/fontawesome-free/css/all.min.css';
+import { Analytics } from "@vercel/analytics/react"
 
 // Lazy load page components
 const HomePage = React.lazy(() => import('./pages/HomePage'));
@@ -104,45 +105,57 @@ function App() {
                     <Route
                       path="/login"
                       element={
-                        <Suspense
-                          fallback={
-                            <LoadingFallback message="Loading login..." />
-                          }
-                        >
-                          <LoginPage />
-                        </Suspense>
+                        <>
+                          <Navbar />
+                          <Suspense
+                            fallback={
+                              <LoadingFallback message="Loading login..." />
+                            }
+                          >
+                            <LoginPage />
+                          </Suspense>
+                        </>
                       }
                     />
                     <Route
                       path="/register"
                       element={
-                        <Suspense
-                          fallback={
-                            <LoadingFallback message="Loading registration..." />
-                          }
-                        >
-                          <RegisterPage />
-                        </Suspense>
+                        <>
+                          <Navbar />
+                          <Suspense
+                            fallback={
+                              <LoadingFallback message="Loading registration..." />
+                            }
+                          >
+                            <RegisterPage />
+                          </Suspense>
+                        </>
                       }
                     />
                     <Route
                       path="/forgot-password"
                       element={
-                        <Suspense
-                          fallback={<LoadingFallback message="Loading..." />}
-                        >
-                          <ForgotPasswordPage />
-                        </Suspense>
+                        <>
+                          <Navbar />
+                          <Suspense
+                            fallback={<LoadingFallback message="Loading..." />}
+                          >
+                            <ForgotPasswordPage />
+                          </Suspense>
+                        </>
                       }
                     />
                     <Route
                       path="/reset-password"
                       element={
-                        <Suspense
-                          fallback={<LoadingFallback message="Loading..." />}
-                        >
-                          <ResetPasswordPage />
-                        </Suspense>
+                        <>
+                          <Navbar />
+                          <Suspense
+                            fallback={<LoadingFallback message="Loading..." />}
+                          >
+                            <ResetPasswordPage />
+                          </Suspense>
+                        </>
                       }
                     />
 
@@ -264,6 +277,7 @@ function App() {
                   </Routes>
                 </Suspense>
               </div>
+              <Analytics />
             </Router>
           </ToastProvider>
         </AuthProvider>

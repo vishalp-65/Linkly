@@ -48,7 +48,7 @@ const PageHeader: React.FC<PageHeaderProps> = ({
                     </div>
 
                     {subtitle && (
-                        <p className="text-xs sm:text-sm text-gray-600 dark:text-gray-400 ml-8 sm:ml-9">
+                        <p className="text-xs sm:text-sm text-gray-600 dark:text-gray-400 ml-10">
                             {subtitle}
                         </p>
                     )}

@@ -109,6 +109,7 @@ const calculateExpiryInfo = (expiresAt: string | null | undefined) => {
 const URLCard: React.FC<URLCardProps> = ({
     url,
     onAnalyticsClick,
+    onEditClick,
     onShareClick,
     isSelected = false,
     onSelect,
@@ -222,40 +223,39 @@ const URLCard: React.FC<URLCardProps> = ({
                 <div className="p-2 sm:p-3">
                     <div className="flex flex-col gap-4">
                         {/* Header Section */}
-                        <div className="flex items-start justify-between gap-3">
+                        <div className="flex sm:flex-row flex-col items-start justify-between gap-3">
                             {/* Checkbox */}
                             {showCheckbox && onSelect && (
-                                <div className="flex items-start pt-1">
+                                <div className="flex items-center pt-1 justify-center gap-3">
                                     <input
                                         type="checkbox"
                                         checked={isSelected}
                                         onChange={handleCheckboxChange}
-                                        className="w-4 h-4 sm:w-5 sm:h-5 rounded border-gray-300 text-blue-600 focus:ring-blue-500 focus:ring-2 cursor-pointer"
+                                        className="w-4 h-4 sm:w-5 sm:h-5 rounded-full border-gray-300 text-blue-600 focus:ring-blue-500 focus:ring-2 cursor-pointer"
                                         aria-label={`Select ${url.short_code}`}
                                     />
+                                    <a
+                                        href={shortUrl}
+                                        target="_blank"
+                                        rel="noopener noreferrer"
+                                        className="inline-flex items-center gap-2 text-base sm:text-lg font-semibold text-blue-600 dark:text-blue-400 hover:text-blue-700 dark:hover:text-blue-300 transition-colors group/link"
+                                    >
+                                        <span className="truncate">{shortUrl}</span>
+                                        <svg
+                                            className="w-4 h-4 opacity-0 group-hover/link:opacity-100 transition-opacity flex-shrink-0"
+                                            fill="none"
+                                            stroke="currentColor"
+                                            viewBox="0 0 24 24"
+                                            aria-hidden="true"
+                                        >
+                                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14" />
+                                        </svg>
+                                    </a>
                                 </div>
                             )}
 
                             {/* Short URL and Badges */}
                             <div className="flex-1 min-w-0">
-                                <a
-                                    href={shortUrl}
-                                    target="_blank"
-                                    rel="noopener noreferrer"
-                                    className="inline-flex items-center gap-2 text-base sm:text-lg font-semibold text-blue-600 dark:text-blue-400 hover:text-blue-700 dark:hover:text-blue-300 transition-colors group/link"
-                                >
-                                    <span className="truncate">{shortUrl}</span>
-                                    <svg
-                                        className="w-4 h-4 opacity-0 group-hover/link:opacity-100 transition-opacity flex-shrink-0"
-                                        fill="none"
-                                        stroke="currentColor"
-                                        viewBox="0 0 24 24"
-                                        aria-hidden="true"
-                                    >
-                                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14" />
-                                    </svg>
-                                </a>
-
                                 {/* Badges */}
                                 <div className="flex flex-wrap items-center gap-2 mt-2">
                                     {url.is_custom_alias && (
@@ -281,6 +281,17 @@ const URLCard: React.FC<URLCardProps> = ({
                                     title="Copy URL"
                                     icon={<CopyIcon copied={copied} />}
                                 />
+                                {onEditClick && (
+                                    <ActionButton
+                                        onClick={() => onEditClick(url)}
+                                        title="Edit URL"
+                                        icon={
+                                            <svg className="w-4 h-4 sm:w-5 sm:h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
+                                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
+                                            </svg>
+                                        }
+                                    />
+                                )}
                                 {onAnalyticsClick && (
                                     <ActionButton
                                         onClick={() => onAnalyticsClick(url)}

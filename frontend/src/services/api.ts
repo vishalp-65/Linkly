@@ -283,6 +283,23 @@ export const api = createApi({
       },
     }),
 
+    updateUrl: builder.mutation<
+      ApiResponse<URLItem>,
+      { shortCode: string; longUrl?: string; customAlias?: string; expiryDate?: string | null }
+    >({
+      query: ({ shortCode, ...data }) => ({
+        url: `/url/${shortCode}`,
+        method: 'PUT',
+        body: data,
+      }),
+      invalidatesTags: (_result, _error, { shortCode }) => [
+        'URLs',
+        { type: 'URLs', id: shortCode },
+        { type: 'Analytics', id: shortCode },
+        { type: 'Analytics', id: 'global' },
+      ],
+    }),
+
     deleteUrl: builder.mutation<ApiResponse<void>, string>({
       query: (shortCode) => ({
         url: `/url/${shortCode}`,
@@ -413,6 +430,7 @@ export const api = createApi({
         uniqueVisitors: number;
         clicksByDate: Array<{ date: string; clicks: number }>;
         clicksByCountry: Array<{ country: string; clicks: number }>;
+        clicksByIndianState?: Array<{ state: string; stateCode: string; clicks: number }>;
         clicksByDevice: Array<{ device: string; clicks: number }>;
         clicksByReferrer: Array<{ referrer: string; clicks: number }>;
       }>,
@@ -502,6 +520,7 @@ export const {
   useCheckAliasAvailabilityQuery,
   useLazyCheckAliasAvailabilityQuery,
   useGetUserUrlsQuery,
+  useUpdateUrlMutation,
   useDeleteUrlMutation,
   useBulkDeleteUrlsMutation,
   useBulkUpdateExpiryMutation,

@@ -56,6 +56,15 @@ router.get(
     asyncHandler(urlController.resolveUrl)
 )
 
+// Update Short URL
+router.put(
+    "/:shortCode",
+    authMiddleware.authenticate,
+    validateParams(urlValidators.shortCode),
+    validateRequest(urlValidators.updateUrl),
+    asyncHandler(urlController.updateUrl)
+)
+
 // Delete Short URL
 router.delete(
     "/:shortCode",

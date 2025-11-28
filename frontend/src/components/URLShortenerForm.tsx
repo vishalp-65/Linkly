@@ -8,7 +8,6 @@ import Button from './common/Button';
 import Card from './common/Card';
 import URLResult, { type URLResultData } from './URLResult';
 import { useToast } from '../contexts/ToastContext';
-import { API_REDIRECT_BASE_URL } from '../utils/constant';
 
 interface URLShortenerFormProps {
     onSuccess?: (shortUrl: string) => void;
@@ -87,7 +86,7 @@ const URLShortenerForm: React.FC<URLShortenerFormProps> = ({ onSuccess }) => {
                 ...(useExpiry && expiryDays && { expiryDays: parseInt(expiryDays) }),
             }).unwrap();
 
-            const shortUrl = `${API_REDIRECT_BASE_URL}/${result.data.short_code}`;
+            const shortUrl = `${window.location.origin}/${result.data.short_code}`;
 
             setUrlResult({
                 shortUrl: shortUrl,
@@ -139,7 +138,7 @@ const URLShortenerForm: React.FC<URLShortenerFormProps> = ({ onSuccess }) => {
     return (
         <>
             <Card className="bg-gradient-to-br from-white to-gray-50 dark:from-gray-800 dark:to-gray-800/50 shadow-lg hover:shadow-xl transition-shadow duration-300 mb-8">
-                <div className="p-5 sm:p-6">
+                <div className="p-5 sm:p-5">
                     {/* Header */}
                     <div className="mb-6">
                         <div className="flex items-center gap-3 mb-2">
@@ -153,7 +152,7 @@ const URLShortenerForm: React.FC<URLShortenerFormProps> = ({ onSuccess }) => {
                         </div>
                     </div>
 
-                    <div className="space-y-5">
+                    <div className="space-y-5 select-none">
                         {/* URL Input */}
                         <Input
                             label={<span className="flex items-center gap-1.5">Long URL <span className="text-red-500 dark:text-red-400">*</span></span>}
@@ -171,7 +170,7 @@ const URLShortenerForm: React.FC<URLShortenerFormProps> = ({ onSuccess }) => {
 
                         {/* Custom Alias Section */}
                         {canUseCustomAlias && (
-                            <div className="bg-gradient-to-br from-purple-50 to-indigo-50 dark:from-purple-900/10 dark:to-indigo-900/10 rounded-xl p-4 border border-purple-100 dark:border-purple-900/30">
+                            <div className="bg-gradient-to-br from-purple-50 to-indigo-50 dark:from-purple-900/10 dark:to-indigo-900/10 rounded-xl p-4 border border-purple-100 dark:border-purple-900/30 animate-fade-in">
                                 <label className="flex items-center gap-3 cursor-pointer">
                                     <input
                                         type="checkbox"
@@ -209,7 +208,7 @@ const URLShortenerForm: React.FC<URLShortenerFormProps> = ({ onSuccess }) => {
                         )}
 
                         {useCustomAlias && canUseCustomAlias && (
-                            <div className="space-y-2">
+                            <div className="space-y-2 ml-3 animate-fade-in">
                                 <label className="block text-sm font-medium text-gray-900 dark:text-gray-100">Custom Alias</label>
                                 <AliasAvailabilityChecker
                                     value={customAlias}
@@ -247,7 +246,7 @@ const URLShortenerForm: React.FC<URLShortenerFormProps> = ({ onSuccess }) => {
 
                         {/* Expiry Section */}
                         {canSetExpiry && (
-                            <div className="bg-gradient-to-br from-green-50 to-emerald-50 dark:from-green-900/10 dark:to-emerald-900/10 rounded-xl p-4 border border-green-100 dark:border-green-900/30">
+                            <div className="bg-gradient-to-br from-green-50 to-emerald-50 dark:from-green-900/10 dark:to-emerald-900/10 rounded-xl p-4 border border-green-100 dark:border-green-900/30 animate-fade-in">
                                 <label className="flex items-center gap-3 cursor-pointer">
                                     <input
                                         type="checkbox"
@@ -267,17 +266,19 @@ const URLShortenerForm: React.FC<URLShortenerFormProps> = ({ onSuccess }) => {
                         )}
 
                         {useExpiry && canSetExpiry && (
-                            <Input
-                                label="Expires in (days)"
-                                type="number"
-                                value={expiryDays}
-                                onChange={(e) => setExpiryDays(e.target.value)}
-                                placeholder="7"
-                                min="1"
-                                max="3650"
-                                leftIcon={<svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>}
-                                helperText="Link will expire after specified days (1-3650)"
-                            />
+                            <div className='animate-fade-in ml-3'>
+                                <Input
+                                    label="Expires in (days)"
+                                    type="number"
+                                    value={expiryDays}
+                                    onChange={(e) => setExpiryDays(e.target.value)}
+                                    placeholder="7"
+                                    min="1"
+                                    max="3650"
+                                    leftIcon={<svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>}
+                                    helperText="Link will expire after specified days (1-3650)"
+                                />
+                            </div>
                         )}
 
                         {/* Error */}

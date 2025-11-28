@@ -7,6 +7,7 @@ import ClicksOverTimeChart from '../components/analytics/ClicksOverTimeChart';
 import GeographicDistributionMap from '../components/analytics/GeographicDistributionMap';
 import DeviceBreakdownChart from '../components/analytics/DeviceBreakdownChart';
 import ReferrerTable from '../components/analytics/ReferrerTable';
+import IndianStatesChart from '../components/analytics/IndianStatesChart';
 import LiveUpdateToggle from '../components/analytics/LiveUpdateToggle';
 import WebSocketStatus from '../components/analytics/WebSocketStatus';
 import DateRangePicker, { type DateRange } from '../components/analytics/DateRangePicker';
@@ -18,6 +19,7 @@ import {
 } from '../services/api';
 import { setCurrentShortCode, setDateRange as setAnalyticsDateRange } from '../store/analyticsSlice';
 import PageHeader from '../components/common/PageHeader';
+import { getCountryName } from '../utils/countryUtils';
 
 const AnalyticsPage: React.FC = () => {
     const { shortCode } = useParams<{ shortCode: string }>();
@@ -98,6 +100,56 @@ const AnalyticsPage: React.FC = () => {
     })) || []);
 
     const avgDailyClicks = clicksChartData.length > 0 ? Math.round(totalClicks / clicksChartData.length) : 0;
+
+    // Process geographic data with country code to name mapping
+    const geographicData = isGlobalView ? [] : (analytics?.clicksByCountry?.map(item => {
+        // Handle various "unknown" cases from backend
+        const rawCountry = item.country || 'Unknown';
+        const isUnknown = rawCountry === 'Unknown' || rawCountry === 'unknown' ||
+            rawCountry === '' || rawCountry === null || rawCountry === undefined;
+
+        const countryCode = isUnknown ? 'XX' : rawCountry;
+        const countryName = getCountryName(countryCode);
+
+        return {
+            country: countryName,
+            countryCode: isUnknown ? 'XX' : countryCode,
+            clicks: item.clicks,
+            percentage: totalClicks > 0 ? (item.clicks / totalClicks) * 100 : 0
+        };
+    }) || []);
+
+    // Process device data
+    const deviceData = isGlobalView ? [] : (analytics?.clicksByDevice?.map(item => {
+        const deviceName = item.device || 'Unknown';
+        return {
+            device: deviceName,
+            clicks: item.clicks,
+            percentage: totalClicks > 0 ? (item.clicks / totalClicks) * 100 : 0,
+            color: ''
+        };
+    }) || []);
+
+    // Process referrer data
+    const referrerData = isGlobalView ? [] : (analytics?.clicksByReferrer?.map(item => {
+        return {
+            referrer: item.referrer || '(direct)',
+            clicks: item.clicks,
+            percentage: totalClicks > 0 ? (item.clicks / totalClicks) * 100 : 0
+        };
+    }) || []);
+
+    // Process Indian states data (if available)
+    const indianStatesData = isGlobalView ? [] : (analytics?.clicksByIndianState?.map(item => {
+        return {
+            state: item.state,
+            stateCode: item.stateCode,
+            clicks: item.clicks,
+            percentage: totalClicks > 0 ? (item.clicks / totalClicks) * 100 : 0
+        };
+    }) || []);
+
+    const hasIndianData = indianStatesData.length > 0;
 
     return (
         <div className="min-h-screen bg-gradient-to-br from-gray-50 via-blue-50 to-indigo-50 dark:from-gray-900 dark:via-gray-800 dark:to-gray-900">
@@ -263,10 +315,13 @@ const AnalyticsPage: React.FC = () => {
                     <div className="space-y-8">
                         <ClicksOverTimeChart data={clicksChartData} loading={isLoadingData} />
                         <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
-                            <GeographicDistributionMap data={[]} loading={isLoadingData} />
-                            <DeviceBreakdownChart data={[]} loading={isLoadingData} />
+                            <GeographicDistributionMap data={geographicData} loading={isLoadingData} />
+                            <DeviceBreakdownChart data={deviceData} loading={isLoadingData} />
                         </div>
-                        <ReferrerTable data={[]} loading={isLoadingData} />
+                        {hasIndianData && (
+                            <IndianStatesChart data={indianStatesData} loading={isLoadingData} />
+                        )}
+                        <ReferrerTable data={referrerData} loading={isLoadingData} />
                     </div>
                 )}
             </div>

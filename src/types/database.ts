@@ -37,6 +37,7 @@ export interface AnalyticsEvent {
     referrer: string | null
     country_code: string | null
     region: string | null
+    region_code: string | null
     city: string | null
     device_type: string | null
     browser: string | null
@@ -102,6 +103,7 @@ export interface CreateAnalyticsEventInput {
     referrer?: string
     country_code?: string
     region?: string
+    region_code?: string
     city?: string
     device_type?: string
     browser?: string

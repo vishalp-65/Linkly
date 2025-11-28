@@ -4,7 +4,6 @@ import { useSelector } from 'react-redux';
 import { useLoginMutation } from '../services/api';
 import { Button } from '../components/common';
 import Input from '../components/common/Input';
-import Card from '../components/common/Card';
 import { useToast } from '../contexts/ToastContext';
 import type { RootState } from '../store';
 
@@ -91,20 +90,20 @@ const LoginPage: React.FC = () => {
     return (
         <div className="min-h-screen bg-gradient-to-br from-gray-50 via-blue-50 to-indigo-100 dark:from-gray-900 dark:via-gray-800 dark:to-gray-900 flex items-center justify-center px-4">
             <div className="max-w-md w-full">
-                <Card padding="lg" className="dark:bg-gray-800 dark:border-gray-700">
+                <div className="p-8">
                     <div className="text-center mb-8">
-                        <div className="w-16 h-16 bg-gradient-to-br from-blue-500 to-purple-600 rounded-2xl flex items-center justify-center mx-auto mb-4 shadow-lg">
+                        {/* <div className="w-16 h-16 bg-gradient-to-br from-blue-500 to-purple-600 rounded-2xl flex items-center justify-center mx-auto mb-4 shadow-lg">
                             <svg className="w-8 h-8 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13.828 10.172a4 4 0 00-5.656 0l-4 4a4 4 0 105.656 5.656l1.102-1.101m-.758-4.899a4 4 0 005.656 0l4-4a4 4 0 00-5.656-5.656l-1.1 1.1" />
                             </svg>
-                        </div>
+                        </div> */}
                         <h1 className="text-3xl font-bold text-gray-900 dark:text-gray-100 mb-2">Welcome Back</h1>
                         <p className="text-gray-600 dark:text-gray-400">Sign in to your account to continue</p>
                     </div>
 
                     <form onSubmit={handleSubmit} className="space-y-6">
                         <Input
-                            label="Email Address"
+                            label="Email"
                             type="email"
                             name="email"
                             value={formData.email}
@@ -158,7 +157,7 @@ const LoginPage: React.FC = () => {
                         </Button>
                     </form>
 
-                    <div className="mt-8 pt-6 border-t border-gray-200 dark:border-gray-700 text-center">
+                    <div className="mt-8 pt-6 border-t text-sm border-gray-200 dark:border-gray-700 text-center">
                         <p className="text-gray-600 dark:text-gray-400">
                             Don't have an account?{' '}
                             <Link
@@ -169,9 +168,9 @@ const LoginPage: React.FC = () => {
                             </Link>
                         </p>
                     </div>
-                </Card>
+                </div>
 
-                <div className="text-center mt-6">
+                {/* <div className="text-center text-sm mt-6">
                     <Link
                         to="/"
                         className="inline-flex items-center text-gray-600 dark:text-gray-400 hover:text-gray-800 dark:hover:text-gray-200 transition-colors"
@@ -181,7 +180,7 @@ const LoginPage: React.FC = () => {
                         </svg>
                         Back to Home
                     </Link>
-                </div>
+                </div> */}
             </div>
         </div>
     );
