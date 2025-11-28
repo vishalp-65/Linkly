@@ -27,7 +27,7 @@ const LoadingFallback: React.FC<LoadingFallbackProps> = ({
             role="status"
             aria-live="polite"
         >
-            <div className="flex flex-col items-center space-y-4">
+            <div className="flex flex-col items-center justify-center space-y-4">
                 <Spinner size="lg" color="primary" label={message} />
                 <p className="text-gray-600 dark:text-gray-400 text-sm font-medium">
                     {message}
